@@ -124,3 +124,11 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(self.request('/api/allocate', {})[0], 400)
         self.assertEqual(self.request('/missing')[0], 404)
         self.assertEqual(self.request('/api/simulate', [])[0], 400)
+
+    def test_index_page(self):
+        with urlopen(self.url + '/', timeout=5) as response:
+            self.assertEqual(response.status, 200)
+            self.assertIn('text/html', response.headers['Content-Type'])
+            page = response.read().decode()
+        for endpoint in ('/health', '/api/defaults', '/api/allocate', '/api/simulate'):
+            self.assertIn(endpoint, page)
