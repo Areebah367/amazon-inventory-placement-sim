@@ -126,6 +126,7 @@
     <p class="purpose">Decide which products to keep nearby, and how many units to stock. The optimiser uses local demand and available space to recommend stock at each Forward Site. Central Fulfilment Centres serve demand not covered by local stock.</p>
     <p class="headline" id="headline" aria-live="polite">Calculating the recommendation…</p>
     <p class="compare" id="compare"></p>
+    <p class="sub" id="stress" aria-live="polite" style="margin-top:8px"></p>
     <div class="policy">
       <div class="seg" id="policy" role="group" aria-label="Category minimum">
         <button data-f="0.2" aria-pressed="true">Protect every category (20% minimum)</button>
@@ -296,6 +297,25 @@ function infeasibleMessage(scenario, result) {
   return `The ${label} does not fit: ${parts.join('; ')}. Increase space or the inbound allowance, reduce demand, or choose “No category minimum”.`;
 }
 
+// Holds the recommended and equal-space stock fixed and tests both on the same random demand draws.
+let stressSeq = 0;
+async function stressTest(scenario) {
+  const id = ++stressSeq, n = 1000;
+  $('stress').textContent = 'Running the demand stress test…';
+  try {
+    const res = await fetch('/api/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenario, n }) });
+    const r = await res.json();
+    if (id !== stressSeq) return;
+    if (!res.ok) throw new Error(r.error);
+    const p = x => (x * 100).toFixed(1) + '%';
+    $('stress').textContent = `Stress test: across ${fmt(n)} random demand scenarios (${Math.round(scenario.cv * 100)}% variation, stock held fixed), `
+      + `this plan covers ${p(r.recommended.mean)} on average (5th–95th percentile ${p(r.recommended.p05)}–${p(r.recommended.p95)}), `
+      + `against ${p(r.baseline.mean)} for equal space per category.`;
+  } catch (e) {
+    if (id === stressSeq) $('stress').textContent = 'The demand stress test could not run for this scenario.';
+  }
+}
+
 // Runs the model for `scenario`; on success it becomes the applied scenario.
 async function run(scenario, { fromEditor = false } = {}) {
   const r = await allocate(scenario);
@@ -306,6 +326,7 @@ async function run(scenario, { fromEditor = false } = {}) {
     $('status').innerHTML = '';
     if (target) target.innerHTML = '<div class="msg ok">Recommendation updated with your inputs.</div>';
     renderAll();
+    stressTest(scenario);
     return;
   }
   const msg = r.code === 422 && r.data.sites ? infeasibleMessage(scenario, r.data) : esc(r.data.error || 'The model could not calculate this scenario.');

@@ -190,7 +190,7 @@ class ApiTests(unittest.TestCase):
 
     def test_dashboard_page(self):
         page = self.html('/')
-        for text in ('/api/defaults', '/api/allocate', 'What to stock, and where', 'Recalculate recommendation',
+        for text in ('/api/defaults', '/api/allocate', '/api/simulate', 'What to stock, and where', 'Recalculate recommendation',
                      'Reset demo', 'equal space per category', 'Use the same decision rule in the next city'):
             self.assertIn(text, page)
 
