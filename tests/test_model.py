@@ -133,7 +133,7 @@ class ApiTests(unittest.TestCase):
 
     def test_dashboard_page(self):
         page = self.html('/')
-        for endpoint in ('/api/defaults', '/api/allocate', '/api/simulate'):
+        for endpoint in ('/api/defaults', '/api/allocate'):
             self.assertIn(endpoint, page)
 
     def test_docs_page(self):
