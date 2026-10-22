@@ -9,36 +9,55 @@
 <style>
   :root {
     --bg: #070707; --panel: #151515; --panel-2: #1c1c1c; --panel-3: #262626; --line: #262626;
-    --fg: #f2f2f2; --muted: #8b8b8b; --accent: #eefb7c; --red: #f06b6b; --amber: #f2b544; --green: #6fd88a;
+    --fg: #f2f2f2; --muted: #8b8b8b; --accent: #eefb7c; --amber: #f2b544;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
   main { max-width: 1200px; margin: 0 auto; padding: 28px 16px 48px; }
-  a { color: inherit; }
-  header { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   h1 { font-size: 26px; margin: 0; font-weight: 600; letter-spacing: -.02em; }
-  .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
-  .search { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border-radius: 999px; padding: 10px 16px; width: 340px; max-width: 100%; color: var(--muted); }
-  .search:focus-within { box-shadow: 0 0 0 2px var(--accent); }
-  .search input { background: none; border: 0; outline: 0; flex: 1; min-width: 0; color: var(--fg); font: inherit; }
+  h2 { font-size: 17px; margin: 0 0 4px; font-weight: 600; }
+  .sub, .hint { color: var(--muted); font-size: 13px; }
+  .hint { margin: 0 0 16px; }
+  .top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
   .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-  .chip { background: var(--panel-2); border-radius: 999px; padding: 7px 14px; color: var(--muted); font-size: 13px; }
+  .chip { background: var(--panel-2); border-radius: 999px; padding: 8px 14px; color: var(--muted); font-size: 13px; }
   .chip b { color: var(--fg); font-weight: 600; }
   .panel { background: var(--panel); border-radius: 20px; padding: 20px; margin-bottom: 16px; }
-  h2 { font-size: 17px; margin: 0 0 4px; font-weight: 600; }
-  .hint { color: var(--muted); font-size: 12.5px; margin: 0 0 16px; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .seg { display: inline-flex; background: var(--panel-2); border-radius: 999px; padding: 4px; gap: 2px; flex-wrap: wrap; }
+  .seg button { background: none; border: 0; border-radius: 999px; padding: 7px 14px; color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--panel-3); color: var(--fg); }
+  .note { background: #2b2414; border-radius: 12px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }
+  .error { background: #2e1717; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
+  .empty { color: var(--muted); padding: 24px 0; text-align: center; }
 
-  /* Site capacity */
-  .cap { display: grid; grid-template-columns: 190px minmax(0, 1fr) 150px; gap: 14px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
-  .cap:first-of-type { border-top: 0; }
-  .cap .name { font-weight: 500; }
-  .track { height: 12px; background: var(--panel-3); border-radius: 999px; overflow: hidden; }
-  .track i { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
-  .track.full i { background: var(--amber); }
-  .cap .num { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
-  .cap .num span { color: var(--muted); }
+  /* Map */
+  #map { height: 480px; border-radius: 14px; background: #0e0e0e; margin-top: 12px; }
+  .leaflet-container { font: inherit; }
+  .leaflet-bar a { background: var(--panel-2); color: var(--fg); border-color: var(--line); }
+  .leaflet-bar a:hover { background: var(--panel-3); }
+  .leaflet-control-attribution { background: rgba(0,0,0,.6) !important; color: var(--muted); }
+  .leaflet-control-attribution a { color: var(--muted); }
+  .leaflet-tooltip { background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; box-shadow: none; }
+  .leaflet-tooltip::before { display: none; }
 
-  /* Heatmaps */
+  /* Sites */
+  .site { display: grid; grid-template-columns: 14px 190px minmax(0, 1fr) 120px 110px; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+  .site:first-child { border-top: 0; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .track { height: 10px; background: var(--panel-3); border-radius: 999px; overflow: hidden; }
+  .track i { display: block; height: 100%; background: var(--amber); border-radius: inherit; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+  .num span { color: var(--muted); }
+  .site-head { color: var(--muted); font-size: 12px; border-top: 0; padding-top: 0; }
+
+  /* Heatmap */
+  .search { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border-radius: 999px; padding: 8px 14px; width: 280px; max-width: 100%; color: var(--muted); }
+  .search:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+  .search input { background: none; border: 0; outline: 0; flex: 1; min-width: 0; color: var(--fg); font: inherit; }
+  .tools { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 12px; }
   .scroll { overflow-x: auto; }
   table { border-collapse: separate; border-spacing: 4px; width: 100%; min-width: 820px; table-layout: fixed; font-variant-numeric: tabular-nums; }
   col.label { width: 190px; }
@@ -47,98 +66,85 @@
   td { text-align: center; border-radius: 8px; padding: 10px 4px; font-size: 13px; font-weight: 500; }
   td.total { background: var(--panel-2); color: var(--muted); }
   tr.cluster th { text-align: left; color: var(--accent); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; padding-top: 12px; }
-  tr.hit th.row { color: var(--accent); }
-  .legend { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .legend { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin-top: 12px; }
   .scale { width: 160px; height: 10px; border-radius: 999px; }
-  .empty { color: var(--muted); padding: 24px 0; text-align: center; }
-  .error { background: #2e1717; color: var(--fg); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
   footer { color: var(--muted); font-size: 12px; text-align: center; }
 
-  /* Map */
-  #map { height: 520px; border-radius: 14px; background: #0e0e0e; }
-  .leaflet-container { font: inherit; }
-  .leaflet-bar a { background: var(--panel-2); color: var(--fg); border-color: var(--line); }
-  .leaflet-bar a:hover { background: var(--panel-3); }
-  .leaflet-control-attribution { background: rgba(0,0,0,.6) !important; color: var(--muted); }
-  .leaflet-control-attribution a { color: var(--muted); }
-  .leaflet-tooltip { background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; box-shadow: none; }
-  .leaflet-tooltip::before { display: none; }
-  .map-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
-  .views { display: inline-flex; background: var(--panel-2); border-radius: 999px; padding: 4px; gap: 2px; }
-  .views button { background: none; border: 0; border-radius: 999px; padding: 6px 14px; color: var(--muted); font: inherit; cursor: pointer; }
-  .views button[aria-pressed="true"] { background: var(--panel-3); color: var(--fg); }
-  .pools { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
-  .pools span { display: inline-flex; align-items: center; gap: 6px; }
-  .pools i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-  .pools b { color: var(--fg); font-weight: 500; }
-  @media (max-width: 640px) { #map { height: 380px; } }
-
-  @media (max-width: 640px) {
-    .cap { grid-template-columns: 1fr auto; }
-    .cap .track { grid-column: 1 / -1; grid-row: 2; }
+  @media (max-width: 760px) {
+    .site { grid-template-columns: 14px minmax(0, 1fr) auto; }
+    .site .track { grid-column: 2 / -1; grid-row: 2; }
+    .site .cov { display: none; }
+    .site-head { display: none; }
+    #map { height: 360px; }
     .search { width: 100%; }
   }
 </style>
 </head>
 <body>
 <main>
-  <header>
+  <div class="top">
     <div>
       <h1>Forward Placement</h1>
-      <div class="sub">UAE forward sites · illustrative data, not live</div>
+      <div class="sub">Recommended stock for each UAE Forward Site · illustrative data, not live</div>
     </div>
-    <label class="search"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
-      <input id="q" type="search" placeholder="Search product categories…" aria-label="Search product categories"></label>
-  </header>
+    <div>
+      <div class="sub" style="margin-bottom:6px">Category minimum</div>
+      <div class="seg" id="policy" role="group" aria-label="Category minimum">
+        <button data-f="0.2" aria-pressed="true">20% · protect every category</button>
+        <button data-f="0" aria-pressed="false">None</button>
+      </div>
+    </div>
+  </div>
 
   <div id="error"></div>
   <div class="chips" id="chips"></div>
+  <div class="note" id="note" hidden></div>
 
   <section class="panel">
-    <div class="map-head">
-      <div><h2>Delivery areas</h2>
-      <p class="hint">Each dot is a delivery area, colored by the forward site that serves it. Hover a dot for details.</p></div>
-      <div class="views" id="views" role="group" aria-label="Map view"><button data-v="uae" aria-pressed="true">All UAE</button><button data-v="dubai" aria-pressed="false">Dubai</button></div>
+    <div class="head">
+      <div><h2>Map</h2><div class="sub">Each dot is a delivery area, colored by the Forward Site that serves it.</div></div>
+      <div class="seg" id="views" role="group" aria-label="Map view"><button data-v="uae" aria-pressed="true">All UAE</button><button data-v="dubai" aria-pressed="false">Dubai</button></div>
     </div>
     <div id="map" role="img" aria-label="Map of the UAE with delivery areas"></div>
-    <div class="pools" id="pools"></div>
   </section>
 
   <section class="panel">
-    <h2>Site capacity</h2>
-    <p class="hint">Space used by the recommended stock vs each site's maximum usable volume.</p>
-    <div id="caps"><div class="empty">Loading…</div></div>
+    <h2>Forward Sites</h2>
+    <p class="hint">Space used vs maximum capacity, and the share of local demand each site can serve.</p>
+    <div id="sites"><div class="empty">Loading…</div></div>
   </section>
 
   <section class="panel">
-    <h2>Stock coverage by category</h2>
-    <p class="hint">Share of each site's cycle demand stocked locally. Categories are clustered by item size.</p>
-    <div class="scroll" id="cov"></div>
-    <div class="legend">0% <span class="scale" style="background:linear-gradient(90deg,#5a1f1f,#6b5418,#2f5a2a,#6fd88a)"></span> 100% · <span>"—" = not stocked</span></div>
+    <div class="head">
+      <div><h2>Heatmap</h2><div class="sub">Product categories by Forward Site, grouped by item size.</div></div>
+      <label class="search"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <input id="q" type="search" placeholder="Search categories…" aria-label="Search categories"></label>
+    </div>
+    <div class="tools">
+      <div class="seg" id="metric" role="group" aria-label="Heatmap value">
+        <button data-m="units" aria-pressed="true">Recommended units</button>
+        <button data-m="coverage" aria-pressed="false">Coverage %</button>
+        <button data-m="demand" aria-pressed="false">Demand</button>
+      </div>
+    </div>
+    <div class="scroll" id="heat"></div>
+    <div class="legend" id="legend"></div>
   </section>
 
-  <section class="panel">
-    <h2>Demand by category</h2>
-    <p class="hint">Expected units per replenishment cycle. Brighter = higher demand.</p>
-    <div class="scroll" id="dem"></div>
-    <div class="legend">Low <span class="scale" style="background:linear-gradient(90deg,#1c1c1c,#eefb7c)"></span> High</div>
-  </section>
-
-  <footer>Model API: <a href="/docs">/docs</a></footer>
+  <footer>Model API: <a href="/docs" style="color:inherit">/docs</a></footer>
 </main>
 
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => Math.round(n).toLocaleString('en-US');
+const pct = x => (x * 100).toFixed(1) + '%';
 const CLUSTERS = [['Small items (under 1 L)', l => l < 1], ['Medium items (1–3 L)', l => l >= 1 && l <= 3], ['Bulky items (over 3 L)', l => l > 3]];
-let data = null, query = '';
-
-// Approximate area centres; each is assigned to the nearest of the model's 7 forward sites.
-const POOL_COLORS = {
+const SITE_COLORS = {
   'Dubai coast': '#eefb7c', 'Dubai central': '#7fb2ff', 'Dubai south residential': '#f2b544',
   'Dubai east': '#c792ff', 'Sharjah border': '#ff8a65', 'Abu Dhabi central': '#6fd88a', 'Al Ain': '#4dd0e1'
 };
+// Approximate area centres, each assigned to the nearest of the 7 Forward Sites.
 const AREAS = [
   ['Dubai Marina', 25.0805, 55.1403, 'Dubai coast'], ['JBR', 25.0780, 55.1330, 'Dubai coast'],
   ['JLT', 25.0693, 55.1415, 'Dubai coast'], ['Al Sufouh', 25.1100, 55.1700, 'Dubai coast'],
@@ -154,33 +160,7 @@ const AREAS = [
   ['Rowdhat', 24.4430, 54.3940, 'Abu Dhabi central'], ['Al Ain', 24.2075, 55.7447, 'Al Ain']
 ];
 
-function drawMap() {
-  const bySite = Object.fromEntries(data.sites.map(s => [s.name, s]));
-  $('pools').innerHTML = Object.entries(POOL_COLORS).map(([name, color]) => {
-    const s = bySite[name], n = AREAS.filter(a => a[3] === name).length;
-    return `<span><i style="background:${color}"></i><b>${esc(name)}</b> ${n} area${n > 1 ? 's' : ''}${s ? ' · ' + Math.round(s.coverage * 100) + '% coverage' : ''}</span>`;
-  }).join('');
-  if (!window.L) { $('map').innerHTML = '<div class="empty">The map library could not load. Check your connection.</div>'; return; }
-  const map = L.map('map', { scrollWheelZoom: false, attributionControl: true });
-  const views = { uae: [[22.6, 51.5], [26.1, 56.4]], dubai: [[24.95, 55.03], [25.36, 55.47]] };
-  $('views').onclick = e => {
-    const b = e.target.closest('button'); if (!b) return;
-    map.flyToBounds(views[b.dataset.v], { duration: 0.6 });
-    for (const x of $('views').children) x.setAttribute('aria-pressed', x === b);
-  };
-  const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
-  L.tileLayer(esri + 'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-    maxZoom: 16, attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors'
-  }).addTo(map);
-  L.tileLayer(esri + 'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(map);
-  map.fitBounds(views.uae);
-  for (const [name, lat, lon, pool] of AREAS) {
-    const s = bySite[pool];
-    L.circleMarker([lat, lon], { radius: 4, weight: 1, color: '#000', fillColor: POOL_COLORS[pool], fillOpacity: 0.95 })
-      .bindTooltip(`<b>${esc(name)}</b><br>Served by ${esc(pool)}${s ? `<br>${Math.round(s.coverage * 100)}% of demand stocked locally` : ''}`)
-      .addTo(map);
-  }
-}
+const st = { scenario: null, result: null, metric: 'units', query: '', map: null, dots: [] };
 
 function mix(a, b, t) {
   const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), [x, y] = [p(a), p(b)];
@@ -191,66 +171,114 @@ function covColor(c) {
   return mix(stops[i], stops[i + 1], s - i);
 }
 
-function heatmap(el, cell, rowTotal, totalLabel) {
-  const { sites, cats } = data, q = query.trim().toLowerCase();
-  const head = `<tr><th></th>${sites.map(s => `<th>${esc(s.name)}</th>`).join('')}<th>${totalLabel}</th></tr>`;
+function renderSummary() {
+  const t = st.result.totals, cats = st.scenario.categories, sites = st.result.sites;
+  const cov = t.demand ? t.stock / t.demand : 0, base = t.demand ? t.baseline / t.demand : 0;
+  $('chips').innerHTML = `
+    <span class="chip">Total capacity <b>${t.capacity.toFixed(1)} m³</b></span>
+    <span class="chip">Stocked locally <b>${fmt(t.stock)}</b> of ${fmt(t.demand)} units</span>
+    <span class="chip">Local coverage <b>${pct(cov)}</b> vs ${pct(base)} equal-space baseline</span>`;
+  const missing = cats.filter((_, i) => sites.every(s => s.q[i] === 0)).map(c => c[0]);
+  $('note').hidden = !missing.length;
+  $('note').innerHTML = missing.length ? `<b>${missing.map(esc).join(' and ')} get no local stock.</b> Without a category minimum, space goes to smaller items. Switch to the 20% minimum to protect them.` : '';
+}
+
+function renderSites() {
+  $('sites').innerHTML = `<div class="site site-head"><span></span><span>Site</span><span>Space used</span><span class="num">Capacity</span><span class="num cov">Coverage</span></div>` +
+    st.result.sites.map(s => {
+      const p = s.cap ? Math.min(1, s.used / s.cap) : 0;
+      return `<div class="site"><i class="dot" style="background:${SITE_COLORS[s.name] || '#999'}"></i><b style="font-weight:500">${esc(s.name)}</b>
+        <div class="track" role="img" aria-label="${Math.round(p * 100)}% of capacity used"><i style="width:${p * 100}%"></i></div>
+        <div class="num">${s.used.toFixed(2)} <span>/ ${s.cap} m³</span></div>
+        <div class="num cov">${pct(s.coverage)} <span>covered</span></div></div>`;
+    }).join('');
+}
+
+function renderHeat() {
+  const { sites } = st.result, cats = st.scenario.categories, q = st.query.trim().toLowerCase(), m = st.metric;
+  const max = Math.max(1, ...sites.flatMap(s => m === 'demand' ? s.d : s.q));
+  const cell = (s, i) => {
+    if (m === 'coverage') {
+      const c = s.d[i] ? s.q[i] / s.d[i] : 1;
+      return `<td style="background:${covColor(c)};color:${c > .8 ? '#0d1a0f' : '#f2f2f2'}" title="${esc(s.name)}: ${fmt(s.q[i])} of ${fmt(s.d[i])} units">${Math.round(c * 100)}%</td>`;
+    }
+    const v = m === 'demand' ? s.d[i] : s.q[i], t = v / max;
+    return `<td style="background:${mix('#1c1c1c', '#eefb7c', t)};color:${t > .55 ? '#141414' : '#f2f2f2'}" title="${esc(s.name)}: ${fmt(v)} units">${fmt(v)}</td>`;
+  };
+  const total = i => {
+    const d = sites.reduce((a, s) => a + s.d[i], 0), u = sites.reduce((a, s) => a + s.q[i], 0);
+    return m === 'coverage' ? (d ? Math.round(u / d * 100) + '%' : '—') : fmt(m === 'demand' ? d : u);
+  };
   let body = '', shown = 0;
   for (const [label, test] of CLUSTERS) {
     const rows = cats.map((c, i) => [c, i]).filter(([c]) => test(c[1]) && c[0].toLowerCase().includes(q));
     if (!rows.length) continue;
     body += `<tr class="cluster"><th colspan="${sites.length + 2}">${label}</th></tr>`;
-    for (const [[name, litres], i] of rows) {
-      shown++;
-      body += `<tr class="${q ? 'hit' : ''}"><th class="row" title="${litres} L per unit">${esc(name)}</th>${sites.map((s, j) => cell(s, i, j)).join('')}<td class="total">${rowTotal(i)}</td></tr>`;
-    }
+    for (const [[name], i] of rows) { shown++; body += `<tr><th class="row">${esc(name)}</th>${sites.map(s => cell(s, i)).join('')}<td class="total">${total(i)}</td></tr>`; }
   }
-  el.innerHTML = shown ? `<table><colgroup><col class="label"></colgroup>${head}${body}</table>` : `<div class="empty">No category matches "${esc(query)}".</div>`;
+  const head = `<tr><th></th>${sites.map(s => `<th>${esc(s.name)}</th>`).join('')}<th>All sites</th></tr>`;
+  $('heat').innerHTML = shown ? `<table><colgroup><col class="label"></colgroup>${head}${body}</table>` : `<div class="empty">No category matches "${esc(st.query)}".</div>`;
+  $('legend').innerHTML = m === 'coverage'
+    ? `0% <span class="scale" style="background:linear-gradient(90deg,#5a1f1f,#6b5418,#2f5a2a,#6fd88a)"></span> 100% of demand stocked`
+    : `Low <span class="scale" style="background:linear-gradient(90deg,#1c1c1c,#eefb7c)"></span> High · ${m === 'demand' ? 'expected units per cycle' : 'recommended units to stock'}`;
 }
 
-function render() {
-  const { sites, totals, cats } = data;
-  $('chips').innerHTML = `
-    <span class="chip">Total capacity <b>${totals.capacity.toFixed(1)} m³</b></span>
-    <span class="chip">Cycle demand <b>${fmt(totals.demand)}</b> units</span>
-    <span class="chip">Stocked <b>${fmt(totals.stock)}</b> units</span>
-    <span class="chip">Coverage <b>${(totals.demand ? totals.stock / totals.demand * 100 : 0).toFixed(1)}%</b></span>`;
-
-  $('caps').innerHTML = sites.map(s => {
-    const p = s.cap ? Math.min(1, s.used / s.cap) : 0;
-    return `<div class="cap"><div class="name">${esc(s.name)}</div>
-      <div class="track ${p >= .95 ? 'full' : ''}" role="img" aria-label="${Math.round(p * 100)}% of capacity used"><i style="width:${p * 100}%"></i></div>
-      <div class="num">${s.used.toFixed(2)} <span>/ ${s.cap} m³ max</span></div></div>`;
-  }).join('');
-
-  heatmap($('cov'), (s, i) => {
-    const c = s.d[i] ? s.q[i] / s.d[i] : 1;
-    return `<td style="background:${covColor(c)};color:${c > .8 ? '#0d1a0f' : '#f2f2f2'}" title="${esc(s.name)} · ${fmt(s.q[i])} of ${fmt(s.d[i])} units">${s.q[i] === 0 && s.d[i] > 0 ? '—' : Math.round(c * 100) + '%'}</td>`;
-  }, i => {
-    const d = sites.reduce((a, s) => a + s.d[i], 0), q = sites.reduce((a, s) => a + s.q[i], 0);
-    return d ? Math.round(q / d * 100) + '%' : '—';
-  }, 'All sites');
-
-  const max = Math.max(...sites.flatMap(s => s.d));
-  heatmap($('dem'), (s, i) => {
-    const t = max ? s.d[i] / max : 0;
-    return `<td style="background:${mix('#1c1c1c', '#eefb7c', t)};color:${t > .55 ? '#141414' : '#f2f2f2'}" title="${esc(s.name)} · ${fmt(s.d[i])} units per cycle">${fmt(s.d[i])}</td>`;
-  }, i => fmt(sites.reduce((a, s) => a + s.d[i], 0)), 'Total');
+function drawMap() {
+  if (!window.L) { $('map').innerHTML = '<div class="empty">The map could not load. Check your connection.</div>'; return; }
+  const map = st.map = L.map('map', { scrollWheelZoom: false });
+  const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
+  L.tileLayer(esri + 'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors' }).addTo(map);
+  L.tileLayer(esri + 'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(map);
+  const views = { uae: [[22.6, 51.5], [26.1, 56.4]], dubai: [[24.95, 55.03], [25.36, 55.47]] };
+  map.fitBounds(views.uae);
+  $('views').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    map.flyToBounds(views[b.dataset.v], { duration: 0.6 });
+    for (const x of $('views').children) x.setAttribute('aria-pressed', x === b);
+  };
+  st.dots = AREAS.map(([name, lat, lon, site]) => L.circleMarker([lat, lon], { radius: 4, weight: 1, color: '#000', fillColor: SITE_COLORS[site], fillOpacity: .95 }).addTo(map));
+}
+function updateDots() {
+  const bySite = Object.fromEntries(st.result.sites.map(s => [s.name, s]));
+  st.dots.forEach((dot, k) => {
+    const [name, , , site] = AREAS[k], s = bySite[site];
+    dot.bindTooltip(`<b>${esc(name)}</b><br>Served by ${esc(site)}${s ? `<br>${pct(s.coverage)} of demand stocked locally` : ''}`);
+  });
 }
 
-$('q').addEventListener('input', e => { query = e.target.value; if (data) render(); });
+async function load(floor) {
+  st.scenario.floor = floor;
+  try {
+    const res = await fetch('/api/allocate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(st.scenario) });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'The model could not allocate this scenario.');
+    st.result = result; $('error').innerHTML = '';
+    renderSummary(); renderSites(); renderHeat(); updateDots();
+  } catch (e) {
+    $('error').innerHTML = `<div class="error">Could not load the model: ${esc(e.message)}</div>`;
+  }
+}
+
+$('policy').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  for (const x of $('policy').children) x.setAttribute('aria-pressed', x === b);
+  load(+b.dataset.f);
+};
+$('metric').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  st.metric = b.dataset.m;
+  for (const x of $('metric').children) x.setAttribute('aria-pressed', x === b);
+  renderHeat();
+};
+$('q').addEventListener('input', e => { st.query = e.target.value; if (st.result) renderHeat(); });
 
 (async () => {
   try {
-    const scenario = await (await fetch('/api/defaults')).json();
-    const res = await fetch('/api/allocate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(scenario) });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'The model could not allocate this scenario.');
-    data = { sites: result.sites, totals: result.totals, cats: scenario.categories };
-    render();
+    st.scenario = await (await fetch('/api/defaults')).json();
     drawMap();
+    await load(0.2);
   } catch (e) {
-    $('caps').innerHTML = '';
-    $('error').innerHTML = `<div class="error">Could not load the model: ${esc(e.message)}</div>`;
+    $('error').innerHTML = `<div class="error">Could not load the scenario: ${esc(e.message)}</div>`;
   }
 })();
 </script>
