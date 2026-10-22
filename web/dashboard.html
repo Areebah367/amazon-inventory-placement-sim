@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Forward Placement</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root {
     --bg: #070707; --panel: #151515; --panel-2: #1c1c1c; --panel-3: #262626; --line: #262626;
@@ -52,6 +54,25 @@
   .error { background: #2e1717; color: var(--fg); border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
   footer { color: var(--muted); font-size: 12px; text-align: center; }
 
+  /* Map */
+  #map { height: 520px; border-radius: 14px; background: #0e0e0e; }
+  .leaflet-container { font: inherit; }
+  .leaflet-bar a { background: var(--panel-2); color: var(--fg); border-color: var(--line); }
+  .leaflet-bar a:hover { background: var(--panel-3); }
+  .leaflet-control-attribution { background: rgba(0,0,0,.6) !important; color: var(--muted); }
+  .leaflet-control-attribution a { color: var(--muted); }
+  .leaflet-tooltip { background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; box-shadow: none; }
+  .leaflet-tooltip::before { display: none; }
+  .map-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .views { display: inline-flex; background: var(--panel-2); border-radius: 999px; padding: 4px; gap: 2px; }
+  .views button { background: none; border: 0; border-radius: 999px; padding: 6px 14px; color: var(--muted); font: inherit; cursor: pointer; }
+  .views button[aria-pressed="true"] { background: var(--panel-3); color: var(--fg); }
+  .pools { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+  .pools span { display: inline-flex; align-items: center; gap: 6px; }
+  .pools i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .pools b { color: var(--fg); font-weight: 500; }
+  @media (max-width: 640px) { #map { height: 380px; } }
+
   @media (max-width: 640px) {
     .cap { grid-template-columns: 1fr auto; }
     .cap .track { grid-column: 1 / -1; grid-row: 2; }
@@ -72,6 +93,16 @@
 
   <div id="error"></div>
   <div class="chips" id="chips"></div>
+
+  <section class="panel">
+    <div class="map-head">
+      <div><h2>Delivery areas</h2>
+      <p class="hint">Each dot is a delivery area, colored by the forward site that serves it. Hover a dot for details.</p></div>
+      <div class="views" id="views" role="group" aria-label="Map view"><button data-v="uae" aria-pressed="true">All UAE</button><button data-v="dubai" aria-pressed="false">Dubai</button></div>
+    </div>
+    <div id="map" role="img" aria-label="Map of the UAE with delivery areas"></div>
+    <div class="pools" id="pools"></div>
+  </section>
 
   <section class="panel">
     <h2>Site capacity</h2>
@@ -102,6 +133,54 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 const fmt = n => Math.round(n).toLocaleString('en-US');
 const CLUSTERS = [['Small items (under 1 L)', l => l < 1], ['Medium items (1–3 L)', l => l >= 1 && l <= 3], ['Bulky items (over 3 L)', l => l > 3]];
 let data = null, query = '';
+
+// Approximate area centres; each is assigned to the nearest of the model's 7 forward sites.
+const POOL_COLORS = {
+  'Dubai coast': '#eefb7c', 'Dubai central': '#7fb2ff', 'Dubai south residential': '#f2b544',
+  'Dubai east': '#c792ff', 'Sharjah border': '#ff8a65', 'Abu Dhabi central': '#6fd88a', 'Al Ain': '#4dd0e1'
+};
+const AREAS = [
+  ['Dubai Marina', 25.0805, 55.1403, 'Dubai coast'], ['JBR', 25.0780, 55.1330, 'Dubai coast'],
+  ['JLT', 25.0693, 55.1415, 'Dubai coast'], ['Al Sufouh', 25.1100, 55.1700, 'Dubai coast'],
+  ['Barsha', 25.1003, 55.2003, 'Dubai coast'], ['Jebel Ali', 25.0100, 55.0700, 'Dubai south residential'],
+  ['JVC', 25.0590, 55.2090, 'Dubai south residential'], ['Arjan', 25.0580, 55.2370, 'Dubai south residential'],
+  ['DIP', 24.9850, 55.1700, 'Dubai south residential'], ['Karama', 25.2430, 55.3050, 'Dubai central'],
+  ['Business Bay', 25.1850, 55.2650, 'Dubai central'], ['Al Bada', 25.2140, 55.2620, 'Dubai central'],
+  ['Raffa', 25.2560, 55.2900, 'Dubai central'], ['Meydan', 25.1600, 55.3000, 'Dubai central'],
+  ['Dubai Silicon Oasis', 25.1185, 55.3820, 'Dubai east'], ['Mizhar', 25.2440, 55.4290, 'Dubai east'],
+  ['Warqa', 25.1910, 55.4080, 'Dubai east'], ['Festival City', 25.2220, 55.3530, 'Dubai east'],
+  ['Rashidiya', 25.2280, 55.3900, 'Dubai east'], ['Al Nahda', 25.2900, 55.3720, 'Sharjah border'],
+  ['Al Khan', 25.3260, 55.3700, 'Sharjah border'], ['Abu Dhabi Central', 24.4870, 54.3660, 'Abu Dhabi central'],
+  ['Rowdhat', 24.4430, 54.3940, 'Abu Dhabi central'], ['Al Ain', 24.2075, 55.7447, 'Al Ain']
+];
+
+function drawMap() {
+  const bySite = Object.fromEntries(data.sites.map(s => [s.name, s]));
+  $('pools').innerHTML = Object.entries(POOL_COLORS).map(([name, color]) => {
+    const s = bySite[name], n = AREAS.filter(a => a[3] === name).length;
+    return `<span><i style="background:${color}"></i><b>${esc(name)}</b> ${n} area${n > 1 ? 's' : ''}${s ? ' · ' + Math.round(s.coverage * 100) + '% coverage' : ''}</span>`;
+  }).join('');
+  if (!window.L) { $('map').innerHTML = '<div class="empty">The map library could not load. Check your connection.</div>'; return; }
+  const map = L.map('map', { scrollWheelZoom: false, attributionControl: true });
+  const views = { uae: [[22.6, 51.5], [26.1, 56.4]], dubai: [[24.95, 55.03], [25.36, 55.47]] };
+  $('views').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    map.flyToBounds(views[b.dataset.v], { duration: 0.6 });
+    for (const x of $('views').children) x.setAttribute('aria-pressed', x === b);
+  };
+  const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
+  L.tileLayer(esri + 'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 16, attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors'
+  }).addTo(map);
+  L.tileLayer(esri + 'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(map);
+  map.fitBounds(views.uae);
+  for (const [name, lat, lon, pool] of AREAS) {
+    const s = bySite[pool];
+    L.circleMarker([lat, lon], { radius: 4, weight: 1, color: '#000', fillColor: POOL_COLORS[pool], fillOpacity: 0.95 })
+      .bindTooltip(`<b>${esc(name)}</b><br>Served by ${esc(pool)}${s ? `<br>${Math.round(s.coverage * 100)}% of demand stocked locally` : ''}`)
+      .addTo(map);
+  }
+}
 
 function mix(a, b, t) {
   const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), [x, y] = [p(a), p(b)];
@@ -168,6 +247,7 @@ $('q').addEventListener('input', e => { query = e.target.value; if (data) render
     if (!res.ok) throw new Error(result.error || 'The model could not allocate this scenario.');
     data = { sites: result.sites, totals: result.totals, cats: scenario.categories };
     render();
+    drawMap();
   } catch (e) {
     $('caps').innerHTML = '';
     $('error').innerHTML = `<div class="error">Could not load the model: ${esc(e.message)}</div>`;
