@@ -102,7 +102,7 @@
 
   <section class="panel">
     <div class="head">
-      <div><h2>Map</h2><div class="sub">Each dot is a delivery area, colored by the Forward Site that serves it.</div></div>
+      <div><h2>Map</h2><div class="sub">Each dot is a delivery area, colored by the Forward Site that serves it. Coverage is modelled per site, so areas on the same site share its figure.</div></div>
       <div class="seg" id="views" role="group" aria-label="Map view"><button data-v="uae" aria-pressed="true">All UAE</button><button data-v="dubai" aria-pressed="false">Dubai</button></div>
     </div>
     <div id="map" role="img" aria-label="Map of the UAE with delivery areas"></div>
@@ -241,8 +241,9 @@ function drawMap() {
 function updateDots() {
   const bySite = Object.fromEntries(st.result.sites.map(s => [s.name, s]));
   st.dots.forEach((dot, k) => {
-    const [name, , , site] = AREAS[k], s = bySite[site];
-    dot.bindTooltip(`<b>${esc(name)}</b><br>Served by ${esc(site)}${s ? `<br>${pct(s.coverage)} of demand stocked locally` : ''}`);
+    const [name, , , site] = AREAS[k], s = bySite[site], n = AREAS.filter(a => a[3] === site).length;
+    const shared = n > 1 ? ` (shared by its ${n} areas)` : '';
+    dot.bindTooltip(`<b>${esc(name)}</b><br>Served by ${esc(site)}${s ? `<br>${esc(site)} site: ${pct(s.coverage)} coverage${shared}` : ''}`);
   });
 }
 
