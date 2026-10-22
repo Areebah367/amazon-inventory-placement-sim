@@ -7,6 +7,8 @@ import json
 import math
 from pathlib import Path
 
+MAX_SITES = 30
+MAX_CATEGORIES = 30
 
 def default_scenario():
     return json.loads((Path(__file__).parent / 'data/default_scenario.json').read_text())
@@ -18,14 +20,17 @@ def validate(s):
     if not isinstance(s, dict) or s.get('version') != 1 or isinstance(s.get('version'), bool):
         raise ValueError('Use a version 1 scenario.')
     sites, cats = s.get('sites'), s.get('categories')
-    if not isinstance(sites, list) or len(sites) != 7 or not isinstance(cats, list) or len(cats) != 8:
-        raise ValueError('Use 7 sites and 8 categories for website compatibility.')
+    if (not isinstance(sites, list) or not 1 <= len(sites) <= MAX_SITES
+            or not isinstance(cats, list) or not 1 <= len(cats) <= MAX_CATEGORIES):
+        raise ValueError(f'Use 1 to {MAX_SITES} sites and 1 to {MAX_CATEGORIES} categories.')
+    rows, cols = len(cats), len(sites)
     for key in ('demand', 'current'):
         matrix = s.get(key)
-        if (not isinstance(matrix, list) or len(matrix) != 8 or
-            any(not isinstance(row, list) or len(row) != 7 or
+        if (not isinstance(matrix, list) or len(matrix) != rows or
+            any(not isinstance(row, list) or len(row) != cols or
                 any(not number(v, 0, 1_000_000) for v in row) for row in matrix)):
-            raise ValueError('Demand and current stock must be 8 by 7 numbers from 0 to 1,000,000.')
+            raise ValueError(f'Demand and current stock must be {rows} by {cols} numbers from 0 to 1,000,000 '
+                             '(one row per category, one column per site).')
     for row in sites:
         if not isinstance(row, list) or len(row) != 4:
             raise ValueError('Each site needs name, capacity, cycle days and inbound limit.')
@@ -34,6 +39,8 @@ def validate(s):
             or not number(days, .1, 30) or not number(limit, 0, 10_000_000)
             or limit != int(limit)):
             raise ValueError('Check site capacity, cycle and integer inbound limits.')
+    if len({row[0].strip().lower() for row in sites}) != len(sites):
+        raise ValueError('Each site needs a unique name.')
     for row in cats:
         if (not isinstance(row, list) or len(row) != 2 or not isinstance(row[0], str)
             or len(row[0]) > 80 or not number(row[1], .01, 10000)):
@@ -54,7 +61,8 @@ def solve(s):
     results = []
     totals = dict.fromkeys(('demand', 'baseline', 'stock', 'volume', 'baseVolume', 'capacity', 'cost', 'baseCost'), 0)
     volumes = [c[1] / 1000 for c in s['categories']]
-    order = sorted(range(8), key=lambda i: (volumes[i], i))
+    n = len(volumes)
+    order = sorted(range(n), key=lambda i: (volumes[i], i))
     for j, (name, cap, days, limit) in enumerate(s['sites']):
         d = [math.ceil(row[j] * s['multiplier'] * days) for row in s['demand']]
         q = [math.ceil(x * s['floor']) for x in d]
@@ -70,7 +78,7 @@ def solve(s):
                 units += add
         else:
             q, used, units = None, 0, 0
-        baseline = [min(x, math.floor((cap / 8 + 1e-10) / volumes[i]), math.floor(limit / 8)) for i, x in enumerate(d)]
+        baseline = [min(x, math.floor((cap / n + 1e-10) / volumes[i]), math.floor(limit / n)) for i, x in enumerate(d)]
         base_volume = sum(x * v for x, v in zip(baseline, volumes))
         base_units, total = sum(baseline), sum(d)
         cost = used * .5 * 35.3146667 * s['holdingRate']

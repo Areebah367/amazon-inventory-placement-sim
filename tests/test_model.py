@@ -76,6 +76,63 @@ class ModelTests(unittest.TestCase):
                        if sum(q) <= 5 and sum(x * v for x, v in zip(q, vols)) <= cap + 1e-10)
             self.assertEqual(solve(s)['sites'][0]['units'], best)
 
+    def test_protected_reference_outputs(self):
+        s = default_scenario()
+        s['floor'] = .2
+        t = solve(s)['totals']
+        self.assertEqual((t['demand'], t['baseline'], t['stock']), (9850, 5116, 6947))
+        self.assertEqual((round(t['baseCost'], 2), round(t['cost'], 2)), (98.69, 127.43))
+
+    def test_added_site(self):
+        s = default_scenario()
+        s['sites'].append(['New site', 1.0, 2, 900])
+        for matrix in (s['demand'], s['current']):
+            for row in matrix:
+                row.append(50)
+        r = solve(s)
+        self.assertEqual(len(r['sites']), 8)
+        new = r['sites'][-1]
+        self.assertEqual(new['d'], [100] * 8)
+        self.assertLessEqual(new['used'], 1.0 + 1e-9)
+        self.assertEqual(r['totals']['demand'], 9850 + 800)
+        self.assertEqual(r['sites'][:7], solve(default_scenario())['sites'])
+
+    def test_single_site_and_category(self):
+        s = default_scenario()
+        s.update(sites=[['Only', 0.01, 1, 100]], categories=[['Thing', 1]], demand=[[20]], current=[[0]])
+        r = solve(s)
+        self.assertEqual(r['sites'][0]['q'], [10])
+        self.assertEqual(r['sites'][0]['baseline'], [10])
+
+    def test_dimension_and_name_validation(self):
+        bad = [
+            lambda s: s['demand'][0].pop(),
+            lambda s: s['current'].pop(),
+            lambda s: s['sites'].append(['Dubai coast', 1, 1, 100]),
+            lambda s: s.update(sites=[]),
+            lambda s: s.update(sites=[['S%d' % i, 1, 1, 100] for i in range(31)]),
+        ]
+        for change in bad:
+            s = default_scenario()
+            change(s)
+            with self.assertRaises(ValueError):
+                validate(s)
+
+    def test_zero_demand_and_zero_capacity(self):
+        s = default_scenario()
+        for row in s['demand']:
+            row[0] = 0
+        site = solve(s)['sites'][0]
+        self.assertEqual((site['total'], site['units'], site['coverage']), (0, 0, 0))
+        s = default_scenario()
+        s['sites'][0][1] = 0
+        self.assertEqual(solve(s)['sites'][0]['q'], [0] * 8)
+        s['floor'] = .2
+        r = solve(s)
+        self.assertFalse(r['feasible'])
+        self.assertFalse(r['sites'][0]['feasible'])
+        self.assertTrue(r['sites'][1]['feasible'])
+
     def test_simulation_validation(self):
         s = default_scenario()
         self.assertEqual(simulate(s, 10), simulate(s, 10))
@@ -133,8 +190,18 @@ class ApiTests(unittest.TestCase):
 
     def test_dashboard_page(self):
         page = self.html('/')
-        for endpoint in ('/api/defaults', '/api/allocate'):
-            self.assertIn(endpoint, page)
+        for text in ('/api/defaults', '/api/allocate', 'What to stock, and where', 'Recalculate recommendation',
+                     'Reset demo', 'equal space per category', 'Use the same decision rule in the next city'):
+            self.assertIn(text, page)
+
+    def test_allocate_accepts_added_site(self):
+        s = default_scenario()
+        s['sites'].append(['New site', 1, 1, 500])
+        for matrix in (s['demand'], s['current']):
+            for row in matrix:
+                row.append(10)
+        code, r = self.request('/api/allocate', s)
+        self.assertEqual((code, len(r['sites'])), (200, 8))
 
     def test_docs_page(self):
         page = self.html('/docs')

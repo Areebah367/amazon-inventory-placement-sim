@@ -8,33 +8,89 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
   :root {
-    --bg: #070707; --panel: #151515; --panel-2: #1c1c1c; --panel-3: #262626; --line: #262626;
-    --fg: #f2f2f2; --muted: #8b8b8b; --accent: #eefb7c; --amber: #f2b544;
+    --bg: #070707; --panel: #151515; --panel-2: #1c1c1c; --panel-3: #262626; --line: #2a2a2a;
+    --fg: #f2f2f2; --muted: #8f8f8f; --accent: #eefb7c; --amber: #f2b544; --red: #f06b6b; --green: #6fd88a;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
   main { max-width: 1200px; margin: 0 auto; padding: 28px 16px 48px; }
-  button { font: inherit; color: inherit; cursor: pointer; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  a { color: inherit; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   h1 { font-size: 26px; margin: 0; font-weight: 600; letter-spacing: -.02em; }
-  h2 { font-size: 17px; margin: 0 0 4px; font-weight: 600; }
+  h2 { font-size: 18px; margin: 0 0 4px; font-weight: 600; }
+  p { margin: 0; }
   .sub, .hint { color: var(--muted); font-size: 13px; }
-  .hint { margin: 0 0 16px; }
-  .top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
-  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-  .chip { background: var(--panel-2); border-radius: 999px; padding: 8px 14px; color: var(--muted); font-size: 13px; }
-  .chip b { color: var(--fg); font-weight: 600; }
+  .hint { margin-bottom: 14px; }
+  .badge { display: inline-block; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 2px 10px; background: var(--panel-3); color: var(--muted); vertical-align: middle; margin-left: 8px; }
   .panel { background: var(--panel); border-radius: 20px; padding: 20px; margin-bottom: 16px; }
-  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
   .seg { display: inline-flex; background: var(--panel-2); border-radius: 999px; padding: 4px; gap: 2px; flex-wrap: wrap; }
   .seg button { background: none; border: 0; border-radius: 999px; padding: 7px 14px; color: var(--muted); }
   .seg button[aria-pressed="true"] { background: var(--panel-3); color: var(--fg); }
-  .note { background: #2b2414; border-radius: 12px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; }
-  .error { background: #2e1717; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; }
-  .empty { color: var(--muted); padding: 24px 0; text-align: center; }
+  .btn { background: var(--panel-3); border: 0; border-radius: 999px; padding: 9px 16px; font-weight: 500; }
+  .btn.primary { background: var(--accent); color: #141414; }
+  .empty { color: var(--muted); padding: 20px 0; text-align: center; }
+
+  /* Hero */
+  .purpose { max-width: 760px; color: #cfcfcf; margin: 10px 0 18px; }
+  .headline { font-size: 30px; line-height: 1.2; font-weight: 600; letter-spacing: -.02em; margin: 0 0 8px; }
+  .headline em { font-style: normal; color: var(--accent); }
+  .compare { color: #cfcfcf; max-width: 820px; }
+  .policy { display: flex; gap: 14px 24px; align-items: center; flex-wrap: wrap; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .rule { color: var(--muted); font-size: 13px; flex: 1 1 320px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+  .chip { background: var(--panel-2); border-radius: 999px; padding: 7px 14px; color: var(--muted); font-size: 13px; }
+  .chip b { color: var(--fg); font-weight: 600; }
+  .msg { border-radius: 12px; padding: 10px 14px; font-size: 13.5px; margin-top: 14px; }
+  .msg.warn { background: #2b2414; }
+  .msg.error { background: #2e1717; }
+  .msg.ok { background: #172417; }
+  .msg.info { background: var(--panel-2); color: var(--muted); }
+
+  /* Editor */
+  details.panel > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  details.panel > summary::-webkit-details-marker { display: none; }
+  details.panel > summary::after { content: "Show"; color: var(--muted); font-size: 13px; }
+  details.panel[open] > summary::after { content: "Hide"; }
+  .editor { margin-top: 16px; display: grid; gap: 16px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--muted); }
+  label.f input, label.f select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--fg); min-width: 0; }
+  label.f input[aria-invalid="true"] { border-color: var(--red); }
+  .group-title { font-size: 12px; color: var(--accent); letter-spacing: .06em; text-transform: uppercase; margin: 4px 0 -4px; }
+  .dirty { color: var(--amber); font-size: 13px; }
+
+  /* Heatmap */
+  .search { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border-radius: 999px; padding: 8px 14px; width: 260px; max-width: 100%; color: var(--muted); }
+  .search:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+  .search input { background: none; border: 0; outline: 0; flex: 1; min-width: 0; color: var(--fg); }
+  .scroll { overflow-x: auto; max-width: 100%; }
+  table { border-collapse: separate; border-spacing: 4px; width: 100%; table-layout: fixed; font-variant-numeric: tabular-nums; }
+  col.label { width: 180px; }
+  th { font-weight: 500; color: var(--muted); font-size: 12px; text-align: center; padding: 4px; }
+  th small { display: block; font-size: 11px; color: #666; font-weight: 400; }
+  th.row { text-align: left; color: var(--fg); font-size: 13px; padding-right: 10px; }
+  td { text-align: center; border-radius: 8px; padding: 10px 4px; font-size: 13px; font-weight: 500; }
+  td.total { background: var(--panel-2); color: var(--muted); }
+  tr.cluster th { text-align: left; color: var(--accent); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; padding-top: 12px; }
+  .legend { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin-top: 12px; flex-wrap: wrap; }
+  .scale { width: 160px; height: 10px; border-radius: 999px; }
+
+  /* Sites */
+  .site { display: grid; grid-template-columns: 14px minmax(140px, 1.2fr) minmax(0, 2fr) 110px 120px 90px; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
+  .site.headrow { color: var(--muted); font-size: 12px; border-top: 0; padding-top: 0; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .track { height: 10px; background: var(--panel-3); border-radius: 999px; overflow: hidden; }
+  .track i { display: block; height: 100%; background: var(--amber); border-radius: inherit; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
+  .num span { color: var(--muted); }
 
   /* Map */
-  #map { height: 480px; border-radius: 14px; background: #0e0e0e; margin-top: 12px; }
+  #map { height: 440px; border-radius: 14px; background: #0e0e0e; }
   .leaflet-container { font: inherit; }
   .leaflet-bar a { background: var(--panel-2); color: var(--fg); border-color: var(--line); }
   .leaflet-bar a:hover { background: var(--panel-3); }
@@ -42,109 +98,137 @@
   .leaflet-control-attribution a { color: var(--muted); }
   .leaflet-tooltip { background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; box-shadow: none; }
   .leaflet-tooltip::before { display: none; }
+  .map-legend { display: flex; gap: 8px 16px; flex-wrap: wrap; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+  .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
 
-  /* Sites */
-  .site { display: grid; grid-template-columns: 14px 190px minmax(0, 1fr) 120px 110px; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); }
-  .site:first-child { border-top: 0; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; }
-  .track { height: 10px; background: var(--panel-3); border-radius: 999px; overflow: hidden; }
-  .track i { display: block; height: 100%; background: var(--amber); border-radius: inherit; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; font-size: 13px; }
-  .num span { color: var(--muted); }
-  .site-head { color: var(--muted); font-size: 12px; border-top: 0; padding-top: 0; }
-
-  /* Heatmap */
-  .search { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border-radius: 999px; padding: 8px 14px; width: 280px; max-width: 100%; color: var(--muted); }
-  .search:focus-within { box-shadow: 0 0 0 2px var(--accent); }
-  .search input { background: none; border: 0; outline: 0; flex: 1; min-width: 0; color: var(--fg); font: inherit; }
-  .tools { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 12px; }
-  .scroll { overflow-x: auto; }
-  table { border-collapse: separate; border-spacing: 4px; width: 100%; min-width: 820px; table-layout: fixed; font-variant-numeric: tabular-nums; }
-  col.label { width: 190px; }
-  th { font-weight: 500; color: var(--muted); font-size: 12px; text-align: center; padding: 4px; }
-  th.row { text-align: left; color: var(--fg); font-size: 13px; padding-right: 10px; }
-  td { text-align: center; border-radius: 8px; padding: 10px 4px; font-size: 13px; font-weight: 500; }
-  td.total { background: var(--panel-2); color: var(--muted); }
-  tr.cluster th { text-align: left; color: var(--accent); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; padding-top: 12px; }
-  .legend { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin-top: 12px; }
-  .scale { width: 160px; height: 10px; border-radius: 999px; }
+  ol.steps { margin: 8px 0 14px; padding-left: 20px; color: #cfcfcf; }
+  ol.steps li { margin: 4px 0; }
+  ul.notes { margin: 8px 0 0; padding-left: 20px; color: var(--muted); font-size: 13px; }
+  ul.notes li { margin: 3px 0; }
   footer { color: var(--muted); font-size: 12px; text-align: center; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
   @media (max-width: 760px) {
+    .headline { font-size: 24px; }
     .site { grid-template-columns: 14px minmax(0, 1fr) auto; }
     .site .track { grid-column: 2 / -1; grid-row: 2; }
-    .site .cov { display: none; }
-    .site-head { display: none; }
-    #map { height: 360px; }
+    .site .opt { display: none; }
+    #map { height: 340px; }
     .search { width: 100%; }
   }
 </style>
 </head>
 <body>
 <main>
-  <div class="top">
-    <div>
-      <h1>Forward Placement</h1>
-      <div class="sub">Recommended stock for each UAE Forward Site · illustrative data, not live</div>
-    </div>
-    <div>
-      <div class="sub" style="margin-bottom:6px">Category minimum</div>
+  <!-- 1. Purpose, recommendation and key results -->
+  <section class="panel" aria-labelledby="title">
+    <h1 id="title">Forward Placement <span class="badge">Illustrative planning demo</span></h1>
+    <p class="purpose">Decide which products to keep nearby, and how many units to stock. The optimiser uses local demand and available space to recommend stock at each Forward Site. Central Fulfilment Centres serve demand not covered by local stock.</p>
+    <p class="headline" id="headline" aria-live="polite">Calculating the recommendation…</p>
+    <p class="compare" id="compare"></p>
+    <div class="policy">
       <div class="seg" id="policy" role="group" aria-label="Category minimum">
-        <button data-f="0.2" aria-pressed="true">20% · protect every category</button>
-        <button data-f="0" aria-pressed="false">None</button>
+        <button data-f="0.2" aria-pressed="true">Protect every category (20% minimum)</button>
+        <button data-f="0" aria-pressed="false">No category minimum</button>
       </div>
+      <p class="rule">Reserve the selected category minimum, then use remaining space for smaller items, up to expected local demand and the inbound allowance.</p>
     </div>
-  </div>
-
-  <div id="error"></div>
-  <div class="chips" id="chips"></div>
-  <div class="note" id="note" hidden></div>
-
-  <section class="panel">
-    <div class="head">
-      <div><h2>Map</h2><div class="sub">Each dot is a delivery area, colored by the Forward Site that serves it. Coverage is modelled per site, so areas on the same site share its figure.</div></div>
-      <div class="seg" id="views" role="group" aria-label="Map view"><button data-v="uae" aria-pressed="true">All UAE</button><button data-v="dubai" aria-pressed="false">Dubai</button></div>
-    </div>
-    <div id="map" role="img" aria-label="Map of the UAE with delivery areas"></div>
+    <div class="chips" id="chips"></div>
+    <div id="status" role="status" aria-live="polite"></div>
   </section>
 
-  <section class="panel">
-    <h2>Forward Sites</h2>
-    <p class="hint">Space used vs maximum capacity, and the share of local demand each site can serve.</p>
-    <div id="sites"><div class="empty">Loading…</div></div>
-  </section>
+  <!-- 2. Editable scenario (collapsed) -->
+  <details class="panel" id="editor-panel">
+    <summary><span><h2 style="display:inline">Edit the scenario</h2> <span class="sub">· change a Forward Site's space, cycle or demand</span></span></summary>
+    <div class="editor">
+      <p class="sub">Changes apply only to your browser session. The shared demo data is never changed.</p>
+      <div class="row">
+        <label class="f" style="min-width:240px">Forward Site<select id="site-select"></select></label>
+        <button class="btn" id="add-site" type="button">+ Add Forward Site</button>
+        <button class="btn" id="remove-site" type="button" hidden>Remove this site</button>
+      </div>
+      <div class="fields" id="site-fields"></div>
+      <div class="group-title">Expected daily units by category</div>
+      <div class="fields" id="demand-fields"></div>
+      <div class="row">
+        <button class="btn primary" id="recalc" type="button">Recalculate recommendation</button>
+        <button class="btn" id="reset" type="button">Reset demo</button>
+        <span class="dirty" id="dirty" hidden>Unapplied changes. Recalculate to update the results.</span>
+      </div>
+      <div id="editor-msg" role="status" aria-live="polite"></div>
+    </div>
+  </details>
 
-  <section class="panel">
+  <!-- 3. Heatmap -->
+  <section class="panel" aria-labelledby="heat-title">
     <div class="head">
-      <div><h2>Heatmap</h2><div class="sub">Product categories by Forward Site, grouped by item size.</div></div>
-      <label class="search"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+      <div><h2 id="heat-title">What to stock, and where</h2>
+        <p class="sub">Rows are product categories, columns are Forward Sites. Categories are grouped by item size, using the packaged volume per unit in the inputs.</p></div>
+      <label class="search"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
         <input id="q" type="search" placeholder="Search categories…" aria-label="Search categories"></label>
     </div>
-    <div class="tools">
-      <div class="seg" id="metric" role="group" aria-label="Heatmap value">
-        <button data-m="units" aria-pressed="true">Recommended units</button>
-        <button data-m="coverage" aria-pressed="false">Coverage %</button>
-        <button data-m="demand" aria-pressed="false">Demand</button>
-      </div>
+    <div class="seg" id="metric" role="group" aria-label="Heatmap value" style="margin-bottom:12px">
+      <button data-m="units" aria-pressed="true">Recommended units</button>
+      <button data-m="coverage" aria-pressed="false">Coverage %</button>
+      <button data-m="demand" aria-pressed="false">Expected demand</button>
     </div>
-    <div class="scroll" id="heat"></div>
+    <div class="scroll" id="heat"><div class="empty">Loading…</div></div>
     <div class="legend" id="legend"></div>
   </section>
 
-  <footer>Model API: <a href="/docs" style="color:inherit">/docs</a></footer>
+  <!-- 4. Forward Site summary -->
+  <section class="panel" aria-labelledby="sites-title">
+    <h2 id="sites-title">Forward Sites</h2>
+    <p class="hint">Space used against usable capacity, units against the inbound allowance per cycle, and local coverage.</p>
+    <div id="sites"><div class="empty">Loading…</div></div>
+  </section>
+
+  <!-- 5. Map -->
+  <section class="panel" aria-labelledby="map-title">
+    <div class="head">
+      <div><h2 id="map-title">Where the sites serve</h2>
+        <p class="sub">Dots are delivery areas, coloured by the Forward Site profile they are grouped into. Area groupings are illustrative, not verified Amazon facilities or service boundaries. Coverage is calculated per Forward Site, so areas on the same site share its figure.</p></div>
+      <div class="seg" id="views" role="group" aria-label="Map view"><button data-v="uae" aria-pressed="true">All UAE</button><button data-v="dubai" aria-pressed="false">Dubai</button></div>
+    </div>
+    <div id="map" role="region" aria-label="Map of delivery areas"></div>
+    <div class="map-legend" id="map-legend"></div>
+  </section>
+
+  <!-- 6. Scaling and assumptions -->
+  <section class="panel" aria-labelledby="scale-title">
+    <h2 id="scale-title">Use the same decision rule in the next city</h2>
+    <ol class="steps">
+      <li>Collect daily category demand, packaged item sizes, usable Forward Site space and the replenishment allowance.</li>
+      <li>Apply the same category protection and allocation rule.</li>
+      <li>Review coverage, cost and stockouts; update inputs as local order data becomes available.</li>
+    </ol>
+    <p class="sub">Every Forward Site uses the same data structure (space, replenishment cycle, inbound allowance and daily demand by category), so a new site needs data, not a new algorithm. You can try this with <b>Add Forward Site</b> in the scenario editor.</p>
+    <ul class="notes">
+      <li>The demo uses seven hypothetical site profiles and eight product categories. They are not a list of Amazon facilities and do not represent one site per emirate.</li>
+      <li>Local coverage is units stocked at Forward Sites divided by expected demand over each site's replenishment cycle. It is not an on-time delivery rate or order-level availability.</li>
+      <li>Network terms: Central Fulfilment Centres hold the full range, Forward Sites hold the recommended stock, and Delivery Stations hold no inventory in this model.</li>
+      <li>Monthly holding cost is a proxy: stocked volume × 0.5 (average stock) × 35.31 ft³/m³ × the scenario's $/ft³/month rate.</li>
+      <li>Not connected to any Amazon or AWS system.</li>
+    </ul>
+  </section>
+
+  <footer>Model API reference: <a href="/docs">/docs</a></footer>
 </main>
 
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = n => Math.round(n).toLocaleString('en-US');
-const pct = x => (x * 100).toFixed(1) + '%';
-const CLUSTERS = [['Small items (under 1 L)', l => l < 1], ['Medium items (1–3 L)', l => l >= 1 && l <= 3], ['Bulky items (over 3 L)', l => l > 3]];
+const pct1 = x => (x * 100).toFixed(1) + '%';
+const money = n => '$' + Math.abs(n).toFixed(2);
+const clone = o => JSON.parse(JSON.stringify(o));
+const SIZE_GROUPS = [['Small items (under 1 L per unit)', l => l < 1], ['Medium items (1–3 L per unit)', l => l >= 1 && l <= 3], ['Bulky items (over 3 L per unit)', l => l > 3]];
 const SITE_COLORS = {
   'Dubai coast': '#eefb7c', 'Dubai central': '#7fb2ff', 'Dubai south residential': '#f2b544',
   'Dubai east': '#c792ff', 'Sharjah border': '#ff8a65', 'Abu Dhabi central': '#6fd88a', 'Al Ain': '#4dd0e1'
 };
-// Approximate area centres, each assigned to the nearest of the 7 Forward Sites.
+const EXTRA_COLORS = ['#e0e0e0', '#ff6fb5', '#9ccc65', '#ffd54f', '#80cbc4', '#b39ddb'];
+// Approximate area centres, each grouped into one of the default Forward Site profiles.
 const AREAS = [
   ['Dubai Marina', 25.0805, 55.1403, 'Dubai coast'], ['JBR', 25.0780, 55.1330, 'Dubai coast'],
   ['JLT', 25.0693, 55.1415, 'Dubai coast'], ['Al Sufouh', 25.1100, 55.1700, 'Dubai coast'],
@@ -160,8 +244,16 @@ const AREAS = [
   ['Rowdhat', 24.4430, 54.3940, 'Abu Dhabi central'], ['Al Ain', 24.2075, 55.7447, 'Al Ain']
 ];
 
-const st = { scenario: null, result: null, metric: 'units', query: '', map: null, dots: [] };
+const st = {
+  defaults: null, applied: null, draft: null, result: null, floor: 0.2,
+  metric: 'units', query: '', sel: 0, seq: 0, busy: false, stale: false, map: null, dots: [], defaultNames: new Set()
+};
 
+function colorFor(name) {
+  if (SITE_COLORS[name]) return SITE_COLORS[name];
+  const extra = st.applied ? st.applied.sites.map(s => s[0]).filter(n => !SITE_COLORS[n]) : [];
+  return EXTRA_COLORS[Math.max(0, extra.indexOf(name)) % EXTRA_COLORS.length];
+}
 function mix(a, b, t) {
   const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), [x, y] = [p(a), p(b)];
   return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join('');
@@ -171,116 +263,298 @@ function covColor(c) {
   return mix(stops[i], stops[i + 1], s - i);
 }
 
-function renderSummary() {
-  const t = st.result.totals, cats = st.scenario.categories, sites = st.result.sites;
-  const cov = t.demand ? t.stock / t.demand : 0, base = t.demand ? t.baseline / t.demand : 0;
-  $('chips').innerHTML = `
-    <span class="chip">Total capacity <b>${t.capacity.toFixed(1)} m³</b></span>
-    <span class="chip">Stocked locally <b>${fmt(t.stock)}</b> of ${fmt(t.demand)} units</span>
-    <span class="chip">Local coverage <b>${pct(cov)}</b> vs ${pct(base)} equal-space baseline</span>`;
-  const missing = cats.filter((_, i) => sites.every(s => s.q[i] === 0)).map(c => c[0]);
-  $('note').hidden = !missing.length;
-  $('note').innerHTML = missing.length ? `<b>${missing.map(esc).join(' and ')} get no local stock.</b> Without a category minimum, space goes to smaller items. Switch to the 20% minimum to protect them.` : '';
+/* ---------- API ---------- */
+async function allocate(scenario) {
+  const id = ++st.seq;
+  setBusy(true);
+  try {
+    const res = await fetch('/api/allocate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(scenario) });
+    const data = await res.json().catch(() => ({ error: 'The server returned an unreadable response.' }));
+    if (id !== st.seq) return null;               // a newer request has started; ignore this one
+    return { code: res.status, ok: res.ok, data };
+  } catch (e) {
+    if (id !== st.seq) return null;
+    return { code: 0, ok: false, data: { error: 'Could not reach the model API. Check your connection and try again.' } };
+  } finally {
+    if (id === st.seq) setBusy(false);
+  }
+}
+function setBusy(b) {
+  st.busy = b;
+  for (const id of ['recalc', 'reset', 'add-site']) $(id).disabled = b;
+  if (b) $('status').innerHTML = '<div class="msg info">Calculating…</div>';
 }
 
-function renderSites() {
-  $('sites').innerHTML = `<div class="site site-head"><span></span><span>Site</span><span>Space used</span><span class="num">Capacity</span><span class="num cov">Coverage</span></div>` +
-    st.result.sites.map(s => {
-      const p = s.cap ? Math.min(1, s.used / s.cap) : 0;
-      return `<div class="site"><i class="dot" style="background:${SITE_COLORS[s.name] || '#999'}"></i><b style="font-weight:500">${esc(s.name)}</b>
-        <div class="track" role="img" aria-label="${Math.round(p * 100)}% of capacity used"><i style="width:${p * 100}%"></i></div>
-        <div class="num">${s.used.toFixed(2)} <span>/ ${s.cap} m³</span></div>
-        <div class="num cov">${pct(s.coverage)} <span>covered</span></div></div>`;
-    }).join('');
+function infeasibleMessage(scenario, result) {
+  const label = Math.round(scenario.floor * 100) + '% category minimum';
+  const parts = result.sites.filter(s => !s.feasible).map(s => {
+    const units = s.d.reduce((a, d) => a + Math.ceil(d * scenario.floor), 0), why = [];
+    if (s.requiredVolume > s.cap + 1e-9) why.push(`needs ${s.requiredVolume.toFixed(2)} m³ but has ${s.cap} m³ of space`);
+    if (units > s.limit) why.push(`needs ${fmt(units)} inbound units but allows ${fmt(s.limit)}`);
+    return `<b>${esc(s.name)}</b> ${why.join(' and ')}`;
+  });
+  return `The ${label} does not fit: ${parts.join('; ')}. Increase space or the inbound allowance, reduce demand, or choose “No category minimum”.`;
+}
+
+// Runs the model for `scenario`; on success it becomes the applied scenario.
+async function run(scenario, { fromEditor = false } = {}) {
+  const r = await allocate(scenario);
+  if (!r) return;
+  const target = fromEditor ? $('editor-msg') : null;
+  if (r.ok) {
+    st.applied = clone(scenario); st.result = r.data; st.stale = false;
+    $('status').innerHTML = '';
+    if (target) target.innerHTML = '<div class="msg ok">Recommendation updated with your inputs.</div>';
+    renderAll();
+    return;
+  }
+  const msg = r.code === 422 && r.data.sites ? infeasibleMessage(scenario, r.data) : esc(r.data.error || 'The model could not calculate this scenario.');
+  st.stale = !!st.result;
+  const prev = st.result ? ' <b>Showing the previous successful recommendation; the new inputs were not applied.</b>' : '';
+  $('status').innerHTML = `<div class="msg error">${msg}${prev}</div>`;
+  if (target) target.innerHTML = `<div class="msg error">${msg}</div>`;
+  syncPolicy();
+  if (st.result) renderSummary();
+}
+
+/* ---------- Rendering ---------- */
+function renderSummary() {
+  const t = st.result.totals, cats = st.applied.categories, sites = st.result.sites;
+  const cov = t.demand ? t.stock / t.demand : 0, base = t.demand ? t.baseline / t.demand : 0;
+  // Difference of the displayed (rounded) costs, so the sentence adds up as written.
+  const r2 = n => Math.round(n * 100) / 100;
+  const extra = t.stock - t.baseline, pp = (cov - base) * 100, dc = r2(r2(t.cost) - r2(t.baseCost));
+  $('headline').innerHTML = st.stale
+    ? `Previous recommendation: stock <em>${fmt(t.stock)} units</em> locally to cover <em>${pct1(cov)}</em> of expected demand.`
+    : `Stock <em>${fmt(t.stock)} units</em> locally to cover <em>${pct1(cov)}</em> of expected demand.`;
+  $('compare').textContent = `Compared with equal space per category, that is ${fmt(Math.abs(extra))} ${extra >= 0 ? 'more' : 'fewer'} units stocked locally `
+    + `and ${pp >= 0 ? '+' : '−'}${Math.abs(pp).toFixed(1)} percentage points of coverage (${pct1(base)} → ${pct1(cov)}), `
+    + `for an estimated ${money(dc)} ${dc >= 0 ? 'more' : 'less'} per month in holding cost (${money(t.baseCost)} → ${money(t.cost)}).`;
+  $('chips').innerHTML = `
+    <span class="chip">Total capacity <b>${t.capacity.toFixed(2)} m³</b></span>
+    <span class="chip">Stocked locally <b>${fmt(t.stock)}</b> of ${fmt(t.demand)} expected units</span>
+    <span class="chip">Forward Sites <b>${sites.length}</b> · categories <b>${cats.length}</b></span>`;
+  if (!st.stale) {
+    const missing = cats.filter((_, i) => sites.some(s => s.d[i] > 0) && sites.every(s => s.q[i] === 0)).map(c => c[0]);
+    $('status').innerHTML = missing.length
+      ? `<div class="msg warn"><b>${missing.map(esc).join(' and ')} ${missing.length > 1 ? 'receive' : 'receives'} no local stock.</b> Without a category minimum, space goes to smaller items that fit more units, so ${missing.length > 1 ? 'these categories are' : 'this category is'} served only from Central Fulfilment Centres. “Protect every category” keeps some local stock for every category at a small cost in total coverage.</div>`
+      : '';
+  }
 }
 
 function renderHeat() {
-  const { sites } = st.result, cats = st.scenario.categories, q = st.query.trim().toLowerCase(), m = st.metric;
+  const sites = st.result.sites, cats = st.applied.categories, q = st.query.trim().toLowerCase(), m = st.metric;
   const max = Math.max(1, ...sites.flatMap(s => m === 'demand' ? s.d : s.q));
-  const cell = (s, i) => {
+  const cell = (s, i, cat) => {
+    const d = s.d[i], u = s.q[i], tip = `${s.name} · ${cat}: ${fmt(u)} stocked of ${fmt(d)} expected units per ${s.days}-day cycle`;
     if (m === 'coverage') {
-      const c = s.d[i] ? s.q[i] / s.d[i] : 1;
-      return `<td style="background:${covColor(c)};color:${c > .8 ? '#0d1a0f' : '#f2f2f2'}" title="${esc(s.name)}: ${fmt(s.q[i])} of ${fmt(s.d[i])} units">${Math.round(c * 100)}%</td>`;
+      if (!d) return `<td style="background:var(--panel-2);color:var(--muted)" title="${esc(s.name)} · ${esc(cat)}: no expected demand">—</td>`;
+      const c = u / d;
+      return `<td style="background:${covColor(c)};color:${c > .8 ? '#0d1a0f' : '#f2f2f2'}" title="${esc(tip)}">${Math.round(c * 100)}%</td>`;
     }
-    const v = m === 'demand' ? s.d[i] : s.q[i], t = v / max;
-    return `<td style="background:${mix('#1c1c1c', '#eefb7c', t)};color:${t > .55 ? '#141414' : '#f2f2f2'}" title="${esc(s.name)}: ${fmt(v)} units">${fmt(v)}</td>`;
+    const v = m === 'demand' ? d : u, t = v / max;
+    return `<td style="background:${mix('#1c1c1c', '#eefb7c', t)};color:${t > .55 ? '#141414' : '#f2f2f2'}" title="${esc(tip)}">${fmt(v)}</td>`;
   };
   const total = i => {
     const d = sites.reduce((a, s) => a + s.d[i], 0), u = sites.reduce((a, s) => a + s.q[i], 0);
-    return m === 'coverage' ? (d ? Math.round(u / d * 100) + '%' : '—') : fmt(m === 'demand' ? d : u);
+    if (m === 'coverage') return d ? Math.round(u / d * 100) + '%' : '—';
+    return fmt(m === 'demand' ? d : u);
   };
   let body = '', shown = 0;
-  for (const [label, test] of CLUSTERS) {
+  for (const [label, test] of SIZE_GROUPS) {
     const rows = cats.map((c, i) => [c, i]).filter(([c]) => test(c[1]) && c[0].toLowerCase().includes(q));
     if (!rows.length) continue;
-    body += `<tr class="cluster"><th colspan="${sites.length + 2}">${label}</th></tr>`;
-    for (const [[name], i] of rows) { shown++; body += `<tr><th class="row">${esc(name)}</th>${sites.map(s => cell(s, i)).join('')}<td class="total">${total(i)}</td></tr>`; }
+    body += `<tr class="cluster"><th colspan="${sites.length + 2}" scope="colgroup">${label}</th></tr>`;
+    for (const [[name], i] of rows) {
+      shown++;
+      body += `<tr><th class="row" scope="row">${esc(name)}</th>${sites.map(s => cell(s, i, name)).join('')}<td class="total">${total(i)}</td></tr>`;
+    }
   }
-  const head = `<tr><th></th>${sites.map(s => `<th>${esc(s.name)}</th>`).join('')}<th>All sites</th></tr>`;
-  $('heat').innerHTML = shown ? `<table><colgroup><col class="label"></colgroup>${head}${body}</table>` : `<div class="empty">No category matches "${esc(st.query)}".</div>`;
-  $('legend').innerHTML = m === 'coverage'
-    ? `0% <span class="scale" style="background:linear-gradient(90deg,#5a1f1f,#6b5418,#2f5a2a,#6fd88a)"></span> 100% of demand stocked`
-    : `Low <span class="scale" style="background:linear-gradient(90deg,#1c1c1c,#eefb7c)"></span> High · ${m === 'demand' ? 'expected units per cycle' : 'recommended units to stock'}`;
+  const head = `<tr><th></th>${sites.map(s => `<th scope="col">${esc(s.name)}<small>${s.days}-day cycle</small></th>`).join('')}<th scope="col">All sites</th></tr>`;
+  const minW = 180 + (sites.length + 1) * 96;
+  $('heat').innerHTML = shown
+    ? `<table style="min-width:${minW}px"><colgroup><col class="label"></colgroup>${head}${body}</table>`
+    : `<div class="empty">No category matches “${esc(st.query)}”.</div>`;
+  $('legend').innerHTML = {
+    units: `Fewer <span class="scale" style="background:linear-gradient(90deg,#1c1c1c,#eefb7c)"></span> More · brighter cells mean more recommended units to stock`,
+    coverage: `0% <span class="scale" style="background:linear-gradient(90deg,#5a1f1f,#6b5418,#2f5a2a,#6fd88a)"></span> 100% · share of expected units stocked locally · “—” = no expected demand`,
+    demand: `Fewer <span class="scale" style="background:linear-gradient(90deg,#1c1c1c,#eefb7c)"></span> More · expected units over each site's replenishment cycle (daily demand × cycle days)`
+  }[m];
 }
 
-function drawMap() {
-  if (!window.L) { $('map').innerHTML = '<div class="empty">The map could not load. Check your connection.</div>'; return; }
-  const map = st.map = L.map('map', { scrollWheelZoom: false });
-  const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
-  L.tileLayer(esri + 'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors' }).addTo(map);
-  L.tileLayer(esri + 'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(map);
-  const views = { uae: [[22.6, 51.5], [26.1, 56.4]], dubai: [[24.95, 55.03], [25.36, 55.47]] };
-  map.fitBounds(views.uae);
-  $('views').onclick = e => {
-    const b = e.target.closest('button'); if (!b) return;
-    map.flyToBounds(views[b.dataset.v], { duration: 0.6 });
-    for (const x of $('views').children) x.setAttribute('aria-pressed', x === b);
-  };
-  st.dots = AREAS.map(([name, lat, lon, site]) => L.circleMarker([lat, lon], { radius: 4, weight: 1, color: '#000', fillColor: SITE_COLORS[site], fillOpacity: .95 }).addTo(map));
+function renderSites() {
+  $('sites').innerHTML = `<div class="site headrow"><span></span><span>Forward Site</span><span>Space used</span><span class="num">Capacity</span><span class="num opt">Inbound / cycle</span><span class="num">Coverage</span></div>` +
+    st.result.sites.map(s => {
+      const p = s.cap ? Math.min(1, s.used / s.cap) : 0;
+      return `<div class="site"><i class="dot" style="background:${colorFor(s.name)}"></i><span>${esc(s.name)} <span class="sub">· ${s.days}-day cycle</span></span>
+        <div class="track" role="img" aria-label="${Math.round(p * 100)}% of usable space used"><i style="width:${p * 100}%"></i></div>
+        <div class="num">${s.used.toFixed(2)} <span>/ ${s.cap} m³</span></div>
+        <div class="num opt">${fmt(s.units)} <span>/ ${fmt(s.limit)}</span></div>
+        <div class="num">${s.total ? pct1(s.coverage) : '—'}</div></div>`;
+    }).join('');
 }
-function updateDots() {
-  const bySite = Object.fromEntries(st.result.sites.map(s => [s.name, s]));
+
+function renderMapInfo() {
+  const sites = st.result.sites, mapped = new Set(AREAS.map(a => a[3]));
+  $('map-legend').innerHTML = `<span><i class="dot" style="background:#bbb;width:8px;height:8px"></i>Delivery area (coloured by its Forward Site)</span>` +
+    sites.filter(s => mapped.has(s.name)).map(s => `<span><i class="dot" style="background:${colorFor(s.name)}"></i>${esc(s.name)} · ${s.total ? pct1(s.coverage) : '—'}</span>`).join('') +
+    (sites.some(s => !mapped.has(s.name)) ? `<span>Added sites have no mapped delivery areas.</span>` : '');
+  if (!st.map) return;
+  const bySite = Object.fromEntries(sites.map(s => [s.name, s]));
   st.dots.forEach((dot, k) => {
     const [name, , , site] = AREAS[k], s = bySite[site], n = AREAS.filter(a => a[3] === site).length;
     const shared = n > 1 ? ` (shared by its ${n} areas)` : '';
-    dot.bindTooltip(`<b>${esc(name)}</b><br>Served by ${esc(site)}${s ? `<br>${esc(site)} site: ${pct(s.coverage)} coverage${shared}` : ''}`);
+    dot.setTooltipContent(`<b>${esc(name)}</b> · delivery area<br>Grouped into ${esc(site)}${s ? `<br>${esc(site)} site: ${s.total ? pct1(s.coverage) : '—'} coverage${shared}` : '<br>This site is not in the current scenario'}`);
   });
 }
 
-async function load(floor) {
-  st.scenario.floor = floor;
+function renderAll() { renderSummary(); renderHeat(); renderSites(); renderMapInfo(); syncPolicy(); renderEditor(); }
+
+function syncPolicy() {
+  for (const b of $('policy').children) b.setAttribute('aria-pressed', +b.dataset.f === st.floor);
+}
+
+/* ---------- Map ---------- */
+function drawMap() {
   try {
-    const res = await fetch('/api/allocate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(st.scenario) });
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.error || 'The model could not allocate this scenario.');
-    st.result = result; $('error').innerHTML = '';
-    renderSummary(); renderSites(); renderHeat(); updateDots();
+    if (!window.L) throw new Error('library unavailable');
+    const map = L.map('map', { scrollWheelZoom: false });
+    const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
+    let failed = 0;
+    L.tileLayer(esri + 'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors' })
+      .on('tileerror', () => { if (++failed === 6) $('map-legend').insertAdjacentHTML('afterbegin', '<span style="color:var(--amber)">Map tiles could not load; delivery areas are still shown.</span>'); })
+      .addTo(map);
+    L.tileLayer(esri + 'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(map);
+    const views = { uae: [[22.6, 51.5], [26.1, 56.4]], dubai: [[24.95, 55.03], [25.36, 55.47]] };
+    map.fitBounds(views.uae);
+    $('views').onclick = e => {
+      const b = e.target.closest('button'); if (!b) return;
+      map.flyToBounds(views[b.dataset.v], { duration: 0.6 });
+      for (const x of $('views').children) x.setAttribute('aria-pressed', x === b);
+    };
+    st.dots = AREAS.map(([name, lat, lon, site]) => L.circleMarker([lat, lon], { radius: 4, weight: 1, color: '#000', fillColor: SITE_COLORS[site], fillOpacity: .95 })
+      .bindTooltip(esc(name)).addTo(map));
+    st.map = map;
   } catch (e) {
-    $('error').innerHTML = `<div class="error">Could not load the model: ${esc(e.message)}</div>`;
+    $('map').outerHTML = '<div class="msg error" id="map-error">The map could not load, so geographic context is unavailable. The stock plan above is unaffected.</div>';
+    $('views').hidden = true;
   }
 }
 
+/* ---------- Editor ---------- */
+const SITE_FIELDS = [
+  ['cap', 1, 'Usable storage capacity (m³)', 0, 10000, 'any'],
+  ['days', 2, 'Replenishment cycle (days)', 0.1, 30, 'any'],
+  ['limit', 3, 'Max inbound units per cycle', 0, 10000000, 1]
+];
+function renderEditor() {
+  const d = st.draft, i = Math.min(st.sel, d.sites.length - 1); st.sel = i;
+  $('site-select').innerHTML = d.sites.map((s, k) => `<option value="${k}"${k === i ? ' selected' : ''}>${esc(s[0])}</option>`).join('');
+  const isNew = !st.defaultNames.has(d.sites[i][0]);
+  $('remove-site').hidden = !isNew;
+  $('site-fields').innerHTML = (isNew ? `<label class="f">Site name<input data-k="name" type="text" maxlength="80" value="${esc(d.sites[i][0])}" required></label>` : '') +
+    SITE_FIELDS.map(([key, idx, label, min, max, step]) =>
+      `<label class="f">${label}<input data-k="${key}" type="number" inputmode="decimal" min="${min}" max="${max}" step="${step}" value="${d.sites[i][idx]}" required></label>`).join('');
+  $('demand-fields').innerHTML = d.categories.map((c, k) =>
+    `<label class="f">${esc(c[0])}<input data-c="${k}" type="number" inputmode="numeric" min="0" max="1000000" step="any" value="${d.demand[k][i]}" required></label>`).join('');
+  updateDirty();
+}
+function updateDirty() {
+  const strip = s => JSON.stringify({ ...s, floor: 0 });
+  $('dirty').hidden = !st.applied || strip(st.draft) === strip(st.applied);
+}
+function readEditor() {
+  const d = st.draft, i = st.sel, errors = [];
+  // Returns the parsed value, or null (and records an error) when the input is invalid.
+  const check = (input, label, min, max, whole) => {
+    const raw = input.value.trim(), v = Number(raw);
+    const bad = raw === '' ? 'is required'
+      : !Number.isFinite(v) ? 'must be a number'
+      : v < min || v > max ? `must be between ${min} and ${max.toLocaleString('en-US')}`
+      : whole && !Number.isInteger(v) ? 'must be a whole number' : '';
+    input.setAttribute('aria-invalid', bad ? 'true' : 'false');
+    if (bad) { errors.push(`${label} ${bad}`); return null; }
+    return v;
+  };
+  const nameInput = $('site-fields').querySelector('[data-k="name"]');
+  if (nameInput) {
+    const name = nameInput.value.trim(), dup = d.sites.some((s, k) => k !== i && s[0].toLowerCase() === name.toLowerCase());
+    nameInput.setAttribute('aria-invalid', !name || dup ? 'true' : 'false');
+    if (!name) errors.push('Site name is required'); else if (dup) errors.push('Site name must be unique'); else d.sites[i][0] = name;
+  }
+  for (const [key, idx, label, min, max, step] of SITE_FIELDS) {
+    const v = check($('site-fields').querySelector(`[data-k="${key}"]`), label, min, max, step === 1);
+    if (v !== null) d.sites[i][idx] = v;
+  }
+  $('demand-fields').querySelectorAll('[data-c]').forEach(input => {
+    const k = +input.dataset.c, v = check(input, `${d.categories[k][0]} daily demand`, 0, 1000000, false);
+    if (v !== null) d.demand[k][i] = v;
+  });
+  return errors;
+}
+
+$('site-select').onchange = e => { const errs = readEditor(); if (errs.length) { e.target.value = st.sel; showEditorErrors(errs); return; } st.sel = +e.target.value; $('editor-msg').innerHTML = ''; renderEditor(); };
+$('site-fields').addEventListener('input', () => { readEditor(); updateDirty(); });
+$('demand-fields').addEventListener('input', () => { readEditor(); updateDirty(); });
+function showEditorErrors(errs) { $('editor-msg').innerHTML = `<div class="msg error">Fix these inputs first: ${errs.map(esc).join('; ')}.</div>`; }
+
+$('recalc').onclick = () => {
+  const errs = readEditor();
+  if (errs.length) return showEditorErrors(errs);
+  $('editor-msg').innerHTML = '';
+  run({ ...clone(st.draft), floor: st.floor }, { fromEditor: true });
+};
+$('reset').onclick = () => {
+  st.floor = 0.2; st.draft = clone(st.defaults); st.sel = 0;
+  $('editor-msg').innerHTML = '<div class="msg info">Restoring the demo inputs and the protected policy…</div>';
+  run({ ...clone(st.defaults), floor: 0.2 }, { fromEditor: true });
+};
+$('add-site').onclick = () => {
+  const errs = readEditor(); if (errs.length) return showEditorErrors(errs);
+  const d = st.draft;
+  if (d.sites.length >= 30) { $('editor-msg').innerHTML = '<div class="msg error">The model supports up to 30 Forward Sites.</div>'; return; }
+  let n = 1; while (d.sites.some(s => s[0] === `New site ${n}`)) n++;
+  d.sites.push([`New site ${n}`, 1, 1, 1000]);
+  d.demand.forEach(row => row.push(0)); d.current.forEach(row => row.push(0));
+  st.sel = d.sites.length - 1;
+  $('editor-msg').innerHTML = '<div class="msg info">New site added with zero demand. Enter its inputs, then recalculate.</div>';
+  renderEditor();
+};
+$('remove-site').onclick = () => {
+  const d = st.draft, i = st.sel;
+  d.sites.splice(i, 1); d.demand.forEach(row => row.splice(i, 1)); d.current.forEach(row => row.splice(i, 1));
+  st.sel = 0; $('editor-msg').innerHTML = '<div class="msg info">Site removed from your draft. Recalculate to apply.</div>';
+  renderEditor();
+};
+
+/* ---------- Controls ---------- */
 $('policy').onclick = e => {
-  const b = e.target.closest('button'); if (!b) return;
-  for (const x of $('policy').children) x.setAttribute('aria-pressed', x === b);
-  load(+b.dataset.f);
+  const b = e.target.closest('button'); if (!b || !st.applied) return;
+  st.floor = +b.dataset.f; syncPolicy();
+  run({ ...clone(st.applied), floor: st.floor });
 };
 $('metric').onclick = e => {
   const b = e.target.closest('button'); if (!b) return;
   st.metric = b.dataset.m;
   for (const x of $('metric').children) x.setAttribute('aria-pressed', x === b);
-  renderHeat();
+  if (st.result) renderHeat();
 };
 $('q').addEventListener('input', e => { st.query = e.target.value; if (st.result) renderHeat(); });
 
 (async () => {
+  drawMap();
   try {
-    st.scenario = await (await fetch('/api/defaults')).json();
-    drawMap();
-    await load(0.2);
+    const res = await fetch('/api/defaults');
+    if (!res.ok) throw new Error();
+    st.defaults = await res.json();
   } catch (e) {
-    $('error').innerHTML = `<div class="error">Could not load the scenario: ${esc(e.message)}</div>`;
+    $('headline').textContent = 'The demo scenario could not be loaded.';
+    $('status').innerHTML = '<div class="msg error">Could not reach the model API. Reload the page to try again.</div>';
+    return;
   }
+  st.defaultNames = new Set(st.defaults.sites.map(s => s[0]));
+  st.draft = clone(st.defaults);
+  await run({ ...clone(st.defaults), floor: st.floor });
 })();
 </script>
 </body>
