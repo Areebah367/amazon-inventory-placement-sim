@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forward Placement</title>
+<style>
+  :root {
+    --bg: #070707; --rail: #111; --panel: #151515; --panel-2: #1c1c1c; --panel-3: #232323;
+    --line: #262626; --fg: #f2f2f2; --muted: #8b8b8b; --dim: #5c5c5c;
+    --accent: #eefb7c; --accent-ink: #141414; --amber: #f2b544; --red: #f06b6b; --green: #6fd88a; --blue: #7fb2ff;
+    --radius: 20px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  .app { display: grid; grid-template-columns: 76px minmax(0, 1fr); min-height: 100vh; gap: 16px; padding: 16px; }
+
+  /* Icon rail */
+  .rail { background: var(--rail); border-radius: 28px; display: flex; flex-direction: column; align-items: center; padding: 20px 0; gap: 10px; position: sticky; top: 16px; height: calc(100vh - 32px); }
+  .logo { width: 40px; height: 40px; display: grid; place-items: center; margin-bottom: 14px; }
+  .rail a { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--panel-2); color: var(--muted); text-decoration: none; }
+  .rail a.on { background: var(--fg); color: var(--bg); }
+  .rail .grow { flex: 1; }
+  .rail svg { width: 18px; height: 18px; }
+
+  /* Top bar */
+  .top { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--panel-2); border-radius: 999px; padding: 7px 14px; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .chip b { color: var(--fg); font-weight: 600; }
+  .chip svg { width: 14px; height: 14px; }
+  .top .spacer { flex: 1; }
+  .search { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border-radius: 999px; padding: 7px 14px; min-width: 240px; color: var(--muted); }
+  .search input { background: none; border: 0; outline: 0; flex: 1; min-width: 0; }
+  .search kbd { font: 11px ui-monospace, monospace; background: var(--panel-3); border-radius: 6px; padding: 1px 6px; }
+
+  header.page { display: flex; justify-content: space-between; align-items: flex-end; margin: 26px 0 18px; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 30px; letter-spacing: -.02em; margin: 0; font-weight: 600; }
+  .sub { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+  .pill-btn { color: var(--fg); text-decoration: none; background: var(--panel-2); border: 0; border-radius: 999px; padding: 9px 16px; font-weight: 500; display: inline-flex; gap: 8px; align-items: center; }
+  .pill-btn.primary { background: var(--accent); color: var(--accent-ink); }
+  .pill-btn:disabled { opacity: .5; cursor: default; }
+
+  .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .seg { display: inline-flex; background: var(--panel-2); border-radius: 999px; padding: 4px; gap: 2px; flex-wrap: wrap; }
+  .seg button { background: none; border: 0; border-radius: 999px; padding: 7px 14px; color: var(--muted); display: inline-flex; gap: 8px; align-items: center; }
+  .seg button.on { background: var(--panel-3); color: var(--fg); }
+  .count { font-size: 11px; background: var(--panel-3); border-radius: 999px; padding: 0 7px; color: var(--muted); }
+  .seg button.on .count { background: var(--fg); color: var(--bg); }
+  .toggles { display: flex; gap: 22px; flex-wrap: wrap; }
+  .toggle { display: inline-flex; align-items: center; gap: 10px; font-weight: 500; font-size: 13px; background: none; border: 0; padding: 0; }
+  .switch { width: 38px; height: 22px; border-radius: 999px; background: var(--panel-3); position: relative; transition: background .2s; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: transform .2s, background .2s; }
+  .toggle[aria-pressed="true"] .switch { background: #2c3a1d; }
+  .toggle[aria-pressed="true"] .switch::after { transform: translateX(16px); background: var(--green); }
+
+  /* Map */
+  .map-wrap { position: relative; background: var(--panel); border-radius: var(--radius); overflow: hidden; }
+  #map { display: block; width: 100%; height: 560px; }
+  .map-foot { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; padding: 10px 18px 2px; }
+  .map-ctrl { position: absolute; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .map-ctrl button { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--panel-3); display: grid; place-items: center; }
+  .map-ctrl svg { width: 16px; height: 16px; }
+  .marker { cursor: pointer; }
+  .marker .halo { fill: var(--accent); opacity: .08; }
+  .marker .core { fill: #3a3a3a; stroke: #6a6a6a; stroke-width: 1.5; }
+  .marker.sel .core { fill: var(--accent); stroke: #fff; }
+  .marker.sel .halo { opacity: .16; animation: pulse 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  .marker.dim { opacity: .25; }
+  .marker text { fill: var(--muted); font-size: 12px; font-weight: 500; }
+  .marker.sel text { fill: var(--fg); }
+  @keyframes pulse { 50% { transform: scale(1.25); opacity: .06; } }
+
+  /* Floating site card */
+  .card { background: rgba(24,24,24,.94); backdrop-filter: blur(10px); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  .site-card { position: absolute; top: 18px; left: 18px; width: 380px; display: flex; flex-direction: column; gap: 10px; }
+  .site-head { display: flex; gap: 12px; align-items: center; }
+  .site-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--panel-3); display: grid; place-items: center; flex: none; }
+  .site-head h2 { font-size: 18px; margin: 0; font-weight: 600; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .site-head .sub { margin: 0; }
+  .tag { font-size: 10.5px; font-weight: 600; border-radius: 6px; padding: 1px 7px; background: #20301f; color: var(--green); }
+  .tag.amber { background: #362a12; color: var(--amber); }
+  .tag.red { background: #3a1b1b; color: var(--red); }
+  .tag.blue { background: #18263a; color: var(--blue); }
+  .tag.grey { background: var(--panel-3); color: var(--muted); }
+  .box { background: var(--panel-2); border-radius: 14px; padding: 12px 14px; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .row b { font-weight: 600; }
+  .muted { color: var(--muted); }
+  .progress { height: 6px; border-radius: 999px; background: var(--panel-3); overflow: hidden; margin: 10px 0; }
+  .progress i { display: block; height: 100%; border-radius: inherit; background: repeating-linear-gradient(90deg, var(--amber) 0 3px, #d99a2b 3px 6px); transition: width .4s; }
+  .progress.red i { background: var(--red); }
+  .progress.green i { background: var(--green); }
+  .gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .gauge { background: var(--panel-2); border-radius: 14px; padding: 12px; }
+  .gauge svg { width: 100%; height: auto; display: block; }
+  .alert { display: flex; gap: 10px; align-items: flex-start; background: #2b2414; border-radius: 12px; padding: 10px 14px; font-size: 13px; }
+  .alert.red { background: #2e1717; }
+  .alert.ok { background: #172417; }
+  .alert svg { flex: none; width: 16px; height: 16px; margin-top: 2px; }
+  .close { margin-left: auto; background: none; border: 0; color: var(--muted); font-size: 18px; line-height: 1; padding: 4px; }
+
+  /* Lower panels */
+  .grid2 { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; align-items: start; }
+  .panel { background: var(--panel); border-radius: var(--radius); padding: 20px; min-width: 0; }
+  .panel h3 { font-size: 17px; margin: 0; font-weight: 600; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .caps { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin: 14px 0 18px; }
+  .cap-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .cap-top b { font-size: 15px; }
+  .mini-bar { display: flex; align-items: center; gap: 8px; }
+  .mini-bar .progress { width: 80px; margin: 0; }
+  .mini-bar .count { font-size: 10px; }
+
+  .rack { position: relative; background: linear-gradient(180deg, #0f0f0f, #141414); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+  .rack::before { content: ""; position: absolute; left: 18px; right: 18px; top: 8px; height: 3px; background: repeating-linear-gradient(90deg, #3a3a3a 0 40px, transparent 40px 60px); border-radius: 2px; }
+  .slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+  .slot { position: relative; text-align: left; background: #1d1d1d; border: 1px solid #2c2c2c; border-radius: 12px; padding: 12px; min-height: 118px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+  .slot.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 24px rgba(238,251,124,.12); background: #24261a; }
+  .slot .fill { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,.035); transition: height .4s; pointer-events: none; }
+  .slot .name { font-weight: 600; font-size: 13px; position: relative; }
+  .slot .qty { font-size: 12px; color: var(--muted); position: relative; }
+  .slot .tag { align-self: flex-start; position: relative; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-top: 14px; }
+
+  .cat-head { display: flex; gap: 12px; align-items: center; background: var(--panel-2); border-radius: 14px; padding: 14px; margin: 14px 0 10px; }
+  .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; padding: 14px; }
+  .kv span:first-child { display: block; color: var(--muted); font-size: 12px; }
+  .kv b { font-size: 15px; font-weight: 600; }
+  .list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+  .list button { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--panel-2); border: 1px solid transparent; border-radius: 12px; padding: 9px 12px; text-align: left; }
+  .list button.on { border-color: #3d3d3d; background: var(--panel-3); }
+
+  /* Scenario */
+  .controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+  .ctl label { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
+  .ctl label b { color: var(--fg); }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px; background: var(--panel-3); outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); }
+  input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); border: 3px solid var(--bg); }
+  input[type=range]:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+  .sim { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+  .range-bar { position: relative; height: 8px; background: var(--panel-3); border-radius: 999px; margin: 12px 0 6px; }
+  .range-bar i { position: absolute; top: 0; bottom: 0; border-radius: 999px; }
+  .range-bar em { position: absolute; top: -4px; width: 3px; height: 16px; border-radius: 2px; background: var(--fg); }
+  .big { font-size: 26px; font-weight: 600; letter-spacing: -.02em; }
+  .banner { margin-bottom: 16px; }
+  .skeleton { color: var(--muted); padding: 40px; text-align: center; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  @media (max-width: 1100px) {
+    .grid2 { grid-template-columns: 1fr; }
+    .controls { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 860px) {
+    .app { grid-template-columns: minmax(0, 1fr); padding: 12px 16px; }
+    .rail { display: none; }
+    .site-card { position: static; width: auto; border-radius: var(--radius) var(--radius) 0 0; border: 0; border-bottom: 1px solid var(--line); }
+    #map { height: auto; aspect-ratio: 1000 / 560; }
+    .map-ctrl { top: 12px; bottom: auto; right: 12px; flex-direction: row; }
+    .slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .search { min-width: 0; flex: 1 1 100%; }
+    .top .spacer { display: none; }
+  }
+  @media (max-width: 520px) {
+    .controls, .sim, .caps { grid-template-columns: 1fr; }
+    h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail" aria-label="Main">
+    <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28"><path fill="#eefb7c" d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7z"/></svg></div>
+    <a href="/" class="on" title="Placement dashboard" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg></a>
+    <a href="#layout" title="Storage layout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></a>
+    <a href="#scenario" title="Scenario &amp; simulation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></a>
+    <div class="grow"></div>
+    <a href="/docs" title="API reference"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg></a>
+  </nav>
+
+  <main>
+    <div class="top" id="chips"></div>
+
+    <header class="page">
+      <div>
+        <h1>Placement Dashboard</h1>
+        <div class="sub">UAE forward inventory · Illustrative scenario, not live data</div>
+      </div>
+      <a class="pill-btn" href="/docs">API reference</a>
+    </header>
+
+    <div id="banner"></div>
+
+    <div class="bar">
+      <div class="seg" id="filters" role="group" aria-label="Filter sites"></div>
+      <div class="toggles">
+        <button class="toggle" id="t-routes" aria-pressed="true">Show routes <span class="switch"></span></button>
+        <button class="toggle" id="t-labels" aria-pressed="true">Show labels <span class="switch"></span></button>
+      </div>
+    </div>
+
+    <section class="map-wrap" aria-label="Site map">
+      <svg id="map" viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Schematic map of forward sites"></svg>
+      <div class="card site-card" id="site-card"><div class="skeleton">Loading model…</div></div>
+      <div class="map-ctrl">
+        <button id="z-in" title="Zoom in" aria-label="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4M11 8v6M8 11h6"/></svg></button>
+        <button id="z-out" title="Zoom out" aria-label="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4M8 11h6"/></svg></button>
+        <button id="z-reset" title="Reset view" aria-label="Reset view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></button>
+      </div>
+    </section>
+    <div class="map-foot"><span>Schematic map · not to scale · click a site to inspect</span><span>Recalculated on every scenario change</span></div>
+
+    <div class="grid2" id="layout">
+      <section class="panel" id="rack-panel"></section>
+      <section class="panel" id="cat-panel"></section>
+    </div>
+
+    <section class="panel" id="scenario" style="margin-top:16px">
+      <div class="row" style="align-items:center;flex-wrap:wrap">
+        <h3>Scenario <span class="tag grey">Applies to all sites</span></h3>
+        <div style="display:flex;gap:8px">
+          <button class="pill-btn" id="reset">Reset</button>
+          <button class="pill-btn primary" id="run-sim">▶ Run simulation</button>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="ctl"><label for="c-multiplier">Demand multiplier <b id="v-multiplier"></b></label><input type="range" id="c-multiplier" min="0.5" max="2" step="0.05"></div>
+        <div class="ctl"><label for="c-floor">Category coverage floor <b id="v-floor"></b></label><input type="range" id="c-floor" min="0" max="0.6" step="0.05"></div>
+        <div class="ctl"><label for="c-holdingRate">Holding rate (USD/ft³/mo) <b id="v-holdingRate"></b></label><input type="range" id="c-holdingRate" min="0.2" max="3" step="0.01"></div>
+        <div class="ctl"><label for="c-cv">Demand variation (CV) <b id="v-cv"></b></label><input type="range" id="c-cv" min="0" max="0.6" step="0.05"></div>
+      </div>
+      <div class="sim" id="sim"></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const SITE_POS = {
+  'Sharjah border': [828, 92], 'Dubai east': [812, 198], 'Dubai central': [700, 162],
+  'Dubai coast': [602, 226], 'Dubai south residential': [690, 300],
+  'Abu Dhabi central': [450, 418], 'Al Ain': [880, 452]
+};
+const ROUTES = [
+  ['Abu Dhabi central', 'Dubai south residential'], ['Dubai south residential', 'Dubai coast'],
+  ['Dubai coast', 'Dubai central'], ['Dubai central', 'Sharjah border'], ['Dubai central', 'Dubai east'],
+  ['Dubai east', 'Sharjah border'], ['Abu Dhabi central', 'Al Ain'], ['Dubai east', 'Al Ain']
+];
+const EMIRATE = n => n.startsWith('Sharjah') ? 'Sharjah' : (n.startsWith('Abu Dhabi') || n === 'Al Ain') ? 'Abu Dhabi' : 'Dubai';
+const CTL = { multiplier: v => v.toFixed(2) + '×', floor: v => Math.round(v * 100) + '%', holdingRate: v => '$' + v.toFixed(2), cv: v => v.toFixed(2) };
+
+const st = { defaults: null, scenario: null, result: null, sel: 0, cat: 0, filter: 'All', q: '', routes: true, labels: true, sim: null, simBusy: false, view: [0, 0, 1000, 560], error: null };
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const pct = (x, d = 0) => (x * 100).toFixed(d) + '%';
+
+function status(cov) {
+  if (cov >= 0.9) return ['Full', ''];
+  if (cov >= 0.5) return ['Partial', 'amber'];
+  if (cov > 0) return ['Low', 'red'];
+  return ['Not stocked', 'red'];
+}
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json();
+  return { ok: res.ok, code: res.status, data };
+}
+
+let timer;
+function recalc(delay = 200) {
+  clearTimeout(timer);
+  timer = setTimeout(async () => {
+    try {
+      const r = await api('/api/allocate', st.scenario);
+      if (r.code === 422) { st.error = 'A coverage floor of ' + pct(st.scenario.floor) + ' does not fit at least one site\'s space or inbound limit. Lower the floor.'; st.result = r.data; }
+      else if (!r.ok) { st.error = r.data.error || 'The model rejected this scenario.'; }
+      else { st.error = null; st.result = r.data; }
+      st.sim = null;
+    } catch (e) { st.error = 'Could not reach the API. Check your connection and reload.'; }
+    render();
+  }, delay);
+}
+
+/* ---------- Map ---------- */
+function rng(seed) { return () => (seed = (1664525 * seed + 1013904223) >>> 0) / 4294967296; }
+function mapBase() {
+  const r = rng(7), land = 'M 330 560 L 380 470 L 470 390 L 540 320 L 600 262 L 650 214 L 720 150 L 790 96 L 860 30 L 900 0 L 1000 0 L 1000 560 Z';
+  let streets = '';
+  for (let i = 0; i < 160; i++) {
+    const x = 340 + r() * 680, y = r() * 580, a = (r() < 0.5 ? 0.62 : -0.95) + (r() - 0.5) * 0.3, len = 30 + r() * 140;
+    streets += `M${x.toFixed(0)} ${y.toFixed(0)}l${(Math.cos(a) * len).toFixed(0)} ${(Math.sin(a) * len).toFixed(0)}`;
+  }
+  let blocks = '';
+  for (let i = 0; i < 220; i++) {
+    const x = 340 + r() * 680, y = r() * 580, w = 6 + r() * 16, h = 6 + r() * 14;
+    blocks += `<rect x="${x.toFixed(0)}" y="${y.toFixed(0)}" width="${w.toFixed(0)}" height="${h.toFixed(0)}" rx="2"/>`;
+  }
+  return `<defs><clipPath id="land"><path d="${land}"/></clipPath>
+    <radialGradient id="glow"><stop offset="0" stop-color="#eefb7c" stop-opacity=".35"/><stop offset="1" stop-color="#eefb7c" stop-opacity="0"/></radialGradient></defs>
+    <rect width="1000" height="560" fill="#0d1013"/>
+    <path d="${land}" fill="#171717"/>
+    <g clip-path="url(#land)"><g fill="#1e1e1e">${blocks}</g><path d="${streets}" stroke="#262626" stroke-width="3" stroke-linecap="round" fill="none"/></g>
+    <path d="${land.replace(/ L 1000 0 L 1000 560 Z$/, '')}" fill="none" stroke="#2c3236" stroke-width="2"/>
+    <text x="440" y="190" fill="#2e3439" font-size="12" letter-spacing="4">ARABIAN GULF</text>`;
+}
+const BASE = mapBase();
+
+function visible(i) {
+  const s = st.result.sites[i];
+  return (st.filter === 'All' || EMIRATE(s.name) === st.filter) && s.name.toLowerCase().includes(st.q);
+}
+
+function renderMap() {
+  const sites = st.result.sites, sel = sites[st.sel];
+  let routes = '';
+  if (st.routes) for (const [a, b] of ROUTES) {
+    const [x1, y1] = SITE_POS[a], [x2, y2] = SITE_POS[b], on = a === sel.name || b === sel.name;
+    routes += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${on ? '#eefb7c' : '#4a4a2a'}" stroke-width="${on ? 3 : 2}" stroke-opacity="${on ? .9 : .6}" stroke-dasharray="${on ? '' : '6 6'}"/>`;
+  }
+  const markers = sites.map((s, i) => {
+    const [x, y] = SITE_POS[s.name] || [500, 280], on = i === st.sel, r = 7 + s.cap * 4, left = x > 840;
+    return `<g class="marker${on ? ' sel' : ''}${visible(i) ? '' : ' dim'}" data-i="${i}" tabindex="0" role="button" aria-label="${esc(s.name)}, coverage ${pct(s.coverage)}">
+      ${on ? `<circle cx="${x}" cy="${y}" r="56" fill="url(#glow)"/>` : ''}
+      <circle class="halo" cx="${x}" cy="${y}" r="${r * 1.8}"/>
+      <circle cx="${x}" cy="${y}" r="${r + 5}" fill="none" stroke="${on ? '#eefb7c' : '#444'}" stroke-width="3" stroke-dasharray="${(2 * Math.PI * (r + 5) * s.coverage).toFixed(1)} 999" transform="rotate(-90 ${x} ${y})"/>
+      <circle class="core" cx="${x}" cy="${y}" r="${r}"/>
+      ${st.labels || on ? `<text x="${left ? x - r - 12 : x + r + 12}" y="${y + 4}" text-anchor="${left ? 'end' : 'start'}">${esc(s.name)} · ${pct(s.coverage)}</text>` : ''}
+    </g>`;
+  }).join('');
+  const map = $('map');
+  map.setAttribute('viewBox', st.view.join(' '));
+  map.innerHTML = BASE + routes + markers;
+}
+
+function zoom(f) {
+  const [x, y, w, h] = st.view, [cx, cy] = SITE_POS[st.result.sites[st.sel].name];
+  const nw = Math.min(1000, Math.max(250, w / f)), nh = nw * 0.56;
+  st.view = [Math.max(0, Math.min(1000 - nw, cx - nw / 2)), Math.max(0, Math.min(560 - nh, cy - nh / 2)), nw, nh];
+  renderMap();
+}
+
+/* ---------- Gauges ---------- */
+function arc(cx, cy, r, a0, a1) {
+  const p = a => [cx + r * Math.cos(a * Math.PI / 180), cy + r * Math.sin(a * Math.PI / 180)];
+  const [x0, y0] = p(a0), [x1, y1] = p(a1);
+  return `M${x0.toFixed(1)} ${y0.toFixed(1)}A${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`;
+}
+function coverageGauge(c) {
+  const a0 = 150, a1 = 390, a = a0 + (a1 - a0) * Math.min(1, c);
+  let ticks = '';
+  for (let i = 0; i <= 50; i++) {
+    const t = a0 + (a1 - a0) * i / 50, big = i % 10 === 0, rad = t * Math.PI / 180, r1 = big ? 62 : 66;
+    ticks += `<line x1="${(100 + r1 * Math.cos(rad)).toFixed(1)}" y1="${(100 + r1 * Math.sin(rad)).toFixed(1)}" x2="${(100 + 71 * Math.cos(rad)).toFixed(1)}" y2="${(100 + 71 * Math.sin(rad)).toFixed(1)}" stroke="${big ? '#9a9a9a' : '#4a4a4a'}" stroke-width="${big ? 1.6 : 1}"/>`;
+    if (big) ticks += `<text x="${(100 + 50 * Math.cos(rad)).toFixed(1)}" y="${(103 + 50 * Math.sin(rad)).toFixed(1)}" fill="#777" font-size="8.5" text-anchor="middle">${i * 2}</text>`;
+  }
+  const rad = a * Math.PI / 180;
+  return `<svg viewBox="0 0 200 172" aria-hidden="true">
+    <defs><linearGradient id="gg" x1="0" x2="1"><stop offset="0" stop-color="#f06b6b"/><stop offset=".5" stop-color="#f2b544"/><stop offset="1" stop-color="#6fd88a"/></linearGradient></defs>
+    <path d="${arc(100, 100, 84, a0, a1)}" stroke="#2b2b2b" stroke-width="8" fill="none" stroke-linecap="round"/>
+    ${c > 0 ? `<path d="${arc(100, 100, 84, a0, Math.max(a0 + 1, a))}" stroke="url(#gg)" stroke-width="8" fill="none" stroke-linecap="round"/>` : ''}
+    ${ticks}
+    <line x1="100" y1="100" x2="${(100 + 40 * Math.cos(rad)).toFixed(1)}" y2="${(100 + 40 * Math.sin(rad)).toFixed(1)}" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="100" cy="100" r="5" fill="#fff"/>
+    <text x="100" y="160" fill="#f2f2f2" font-size="20" font-weight="600" text-anchor="middle">${pct(c)}</text>
+  </svg>`;
+}
+function fillGauge(used, cap) {
+  const f = cap ? Math.min(1, used / cap) : 0, top = 150 - 120 * f, ink = f > 0.5 ? '#141414' : '#f2f2f2', sub = f > 0.5 ? '#4a3a12' : '#a0a0a0';
+  return `<svg viewBox="0 0 200 172" aria-hidden="true">
+    <defs><clipPath id="fc"><circle cx="100" cy="90" r="60"/></clipPath></defs>
+    <circle cx="100" cy="90" r="66" fill="none" stroke="#2f2f2f" stroke-width="2" stroke-dasharray="1.5 3.5"/>
+    <circle cx="100" cy="90" r="60" fill="#262626"/>
+    <g clip-path="url(#fc)">
+      <path d="M30 ${top + 6} Q 65 ${top - 6} 100 ${top + 4} T 170 ${top} V 160 H 30 Z" fill="#8a6a2c" opacity=".55"/>
+      <path d="M30 ${top + 10} Q 70 ${top + 2} 105 ${top + 10} T 170 ${top + 6} V 160 H 30 Z" fill="#f2b544"/>
+    </g>
+    <text x="100" y="86" fill="${ink}" font-size="19" font-weight="600" text-anchor="middle">${used.toFixed(2)} m³</text>
+    <text x="100" y="104" fill="${sub}" font-size="11" font-weight="500" text-anchor="middle">of ${cap} m³</text>
+  </svg>`;
+}
+
+/* ---------- Panels ---------- */
+function renderChips() {
+  const t = st.result.totals, sites = st.result.sites;
+  const cov = t.demand ? t.stock / t.demand : 0, base = t.demand ? t.baseline / t.demand : 0;
+  const ok = sites.filter(s => s.feasible).length;
+  $('chips').innerHTML = `
+    <span class="chip">Sites <b>${ok}/${sites.length}</b> feasible</span>
+    <span class="chip">Stocked <b>${fmt(t.stock)}</b> / ${fmt(t.demand)} units</span>
+    <span class="chip">Coverage <b>${pct(cov, 1)}</b></span>
+    <span class="chip">vs baseline <b style="color:var(--green)">+${((cov - base) * 100).toFixed(1)} pts</b></span>
+    <span class="chip">Space used <b>${pct(t.capacity ? t.volume / t.capacity : 0, 1)}</b></span>
+    <span class="chip">Holding <b>$${t.cost.toFixed(0)}</b>/mo</span>
+    <span class="spacer"></span>
+    <label class="search"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+      <input id="q" placeholder="Search sites…" value="${esc(st.q)}" aria-label="Search sites"><kbd>/</kbd></label>`;
+  $('q').oninput = e => { st.q = e.target.value.toLowerCase(); const first = st.result.sites.findIndex((_, i) => visible(i)); if (first >= 0 && !visible(st.sel)) st.sel = first; renderMap(); renderFilters(); };
+}
+
+function renderFilters() {
+  const groups = ['All', 'Dubai', 'Sharjah', 'Abu Dhabi'];
+  $('filters').innerHTML = groups.map(g => {
+    const n = st.result.sites.filter(s => g === 'All' || EMIRATE(s.name) === g).length;
+    return `<button class="${st.filter === g ? 'on' : ''}" data-f="${g}" aria-pressed="${st.filter === g}">${g} <span class="count">${n}</span></button>`;
+  }).join('');
+}
+
+function renderSiteCard() {
+  const s = st.result.sites[st.sel], cats = st.scenario.categories;
+  if (!s.feasible) {
+    $('site-card').innerHTML = `<div class="site-head"><div><h2>${esc(s.name)} <span class="tag red">Infeasible</span></h2></div></div>
+      <div class="alert red">Needs ${s.requiredVolume.toFixed(2)} m³ for the coverage floor but has ${s.cap} m³. Lower the floor in Scenario.</div>`;
+    return;
+  }
+  const [label, cls] = status(s.coverage);
+  const missing = s.q.map((q, i) => q === 0 && s.d[i] > 0 ? cats[i][0] : null).filter(Boolean);
+  const alert = missing.length
+    ? `<div class="alert"><svg viewBox="0 0 24 24" fill="#f2b544"><path d="M12 2 1 21h22L12 2zm1 15h-2v2h2v-2zm0-7h-2v5h2v-5z"/></svg><div><b>Not stocked locally:</b> <span class="muted">${missing.map(esc).join(', ')}. Space is full; these ship from central stock.</span></div></div>`
+    : `<div class="alert ok"><b>All categories stocked</b>&nbsp;<span class="muted">at this site.</span></div>`;
+  $('site-card').innerHTML = `
+    <div class="site-head">
+      <div class="site-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#ddd" stroke-width="1.7"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-5h6v5"/></svg></div>
+      <div><h2>${esc(s.name)} <span class="tag ${cls}">${label}</span></h2><div class="sub">${EMIRATE(s.name)} · ${s.days}-day cycle · ${s.cap} m³ usable</div></div>
+      <button class="close" id="next" title="Next site" aria-label="Next site">›</button>
+    </div>
+    <div class="box">
+      <div class="row"><b>Inbound allowance</b><span><b>${fmt(s.units)}</b> <span class="muted">/ ${fmt(s.limit)} units</span></span></div>
+      <div class="progress"><i style="width:${Math.min(100, s.units / s.limit * 100)}%"></i></div>
+      <div class="row muted" style="font-size:12.5px"><span>Cycle demand <b style="color:var(--fg)">${fmt(s.total)}</b> units</span><span>Baseline ${pct(s.total ? s.baseUnits / s.total : 0)}</span></div>
+    </div>
+    <div class="gauges">
+      <div class="gauge"><div class="row"><b>Coverage</b><span class="tag ${cls}">${label}</span></div>${coverageGauge(s.coverage)}</div>
+      <div class="gauge"><div class="row"><b>Space used</b><span class="tag amber">${pct(s.cap ? s.used / s.cap : 0)}</span></div>${fillGauge(s.used, s.cap)}</div>
+    </div>
+    ${alert}`;
+  $('next').onclick = () => { st.sel = (st.sel + 1) % st.result.sites.length; st.cat = 0; render(); };
+}
+
+function renderRack() {
+  const s = st.result.sites[st.sel], cats = st.scenario.categories;
+  if (!s.feasible) { $('rack-panel').innerHTML = `<h3>Storage layout</h3><p class="muted">No feasible allocation for ${esc(s.name)}.</p>`; return; }
+  const unitPct = s.units / s.limit, volPct = s.cap ? s.used / s.cap : 0;
+  const bar = p => `<div class="mini-bar"><span class="count">${pct(p)}</span><div class="progress ${p >= 0.999 ? 'red' : ''}"><i style="width:${Math.min(100, p * 100)}%"></i></div></div>`;
+  const slots = cats.map(([name, litres], i) => {
+    const c = s.d[i] ? s.q[i] / s.d[i] : 1, [label, cls] = status(c);
+    return `<button class="slot${i === st.cat ? ' on' : ''}" data-c="${i}" aria-pressed="${i === st.cat}">
+      <span class="fill" style="height:${Math.min(100, c * 100)}%"></span>
+      <span class="name">${esc(name)}</span>
+      <span class="qty">${fmt(s.q[i])} / ${fmt(s.d[i])} units · ${(s.q[i] * litres / 1000).toFixed(2)} m³</span>
+      <span class="tag ${cls}">${label}</span>
+    </button>`;
+  }).join('');
+  $('rack-panel').innerHTML = `
+    <h3><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      Storage layout <span class="tag ${volPct >= 0.999 ? 'red' : 'blue'}">${volPct >= 0.999 ? 'Fully used' : 'Space available'}</span></h3>
+    <div class="caps">
+      <div><div class="cap-top"><span><b>${fmt(s.units)}</b> <span class="muted">/ ${fmt(s.limit)}</span></span>${bar(unitPct)}</div><div class="muted" style="font-size:12px">Inbound units</div></div>
+      <div><div class="cap-top"><span><b>${s.used.toFixed(2)}</b> <span class="muted">/ ${s.cap} m³</span></span>${bar(volPct)}</div><div class="muted" style="font-size:12px">Volume capacity</div></div>
+    </div>
+    <div class="rack"><div class="slots">${slots}</div></div>
+    <div class="legend"><span>Tile shading = share of cycle demand stocked</span><span><span class="tag">Full</span> ≥ 90%</span><span><span class="tag amber">Partial</span> 50–90%</span><span><span class="tag red">Low</span> &lt; 50%</span></div>`;
+}
+
+function renderCat() {
+  const s = st.result.sites[st.sel], cats = st.scenario.categories, i = st.cat;
+  if (!s.feasible) { $('cat-panel').innerHTML = '<h3>Categories</h3>'; return; }
+  const [name, litres] = cats[i], c = s.d[i] ? s.q[i] / s.d[i] : 1, [label, cls] = status(c);
+  const cur = st.scenario.current[i][st.sel], delta = s.q[i] - cur;
+  const list = cats.map(([n], k) => {
+    const ck = s.d[k] ? s.q[k] / s.d[k] : 1, [l, cl] = status(ck);
+    return `<button class="${k === i ? 'on' : ''}" data-c="${k}"><span>${esc(n)}</span><span class="tag ${cl}">${pct(ck)}</span></button>`;
+  }).join('');
+  $('cat-panel').innerHTML = `
+    <div class="row"><h3><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8v8l9 5 9-5V8zM3 8l9 5 9-5M12 13v8"/></svg>Categories</h3></div>
+    <div class="muted" style="font-size:12.5px;margin-top:4px">Total: <b style="color:var(--fg)">${cats.length} categories</b> · Stocked: <b style="color:var(--fg)">${fmt(s.units)} units</b></div>
+    <div class="cat-head"><div style="flex:1"><div class="row"><b style="font-size:15px">${esc(name)}</b><span class="tag ${cls}">${label}</span></div><div class="muted" style="font-size:12.5px">${litres} L packaged per unit</div></div></div>
+    <div class="box" style="padding:0">
+      <div class="kv">
+        <div><span>Recommended</span><b>${fmt(s.q[i])} units</b></div>
+        <div><span>Cycle demand</span><b>${fmt(s.d[i])} units</b></div>
+        <div><span>Baseline (equal split)</span><b>${fmt(s.baseline[i])} units</b></div>
+        <div><span>Current stock</span><b>${fmt(cur)}</b> <span class="tag ${delta >= 0 ? 'blue' : 'amber'}">${delta >= 0 ? '+' : ''}${fmt(delta)}</span></div>
+      </div>
+      <div style="padding:0 14px 14px"><div class="row" style="font-size:12.5px"><span class="muted">Coverage</span><b>${pct(c)}</b></div><div class="progress green" style="margin-bottom:0"><i style="width:${Math.min(100, c * 100)}%"></i></div></div>
+    </div>
+    <div class="list">${list}</div>`;
+}
+
+function renderSim() {
+  const el = $('sim');
+  if (!st.sim) { el.innerHTML = `<div class="box muted" style="grid-column:1/-1">Run a 1,000-draw Monte Carlo to compare the recommended stock against an equal-split baseline on the same random demand.</div>`; return; }
+  if (st.sim.error) { el.innerHTML = `<div class="alert red" style="grid-column:1/-1">${esc(st.sim.error)}</div>`; return; }
+  const card = (title, m, color) => `<div class="box"><div class="row"><b>${title}</b><span class="muted">${fmt(st.sim.n)} draws</span></div>
+    <div class="big" style="margin-top:6px;color:${color}">${pct(m.mean, 1)}</div>
+    <div class="range-bar"><i style="left:${m.p05 * 100}%;width:${(m.p95 - m.p05) * 100}%;background:${color};opacity:.5"></i><em style="left:${m.mean * 100}%"></em></div>
+    <div class="row muted" style="font-size:12px"><span>5th pct ${pct(m.p05, 1)}</span><span>95th pct ${pct(m.p95, 1)}</span></div></div>`;
+  el.innerHTML = card('Recommended policy', st.sim.recommended, 'var(--accent)') + card('Equal-split baseline', st.sim.baseline, 'var(--muted)');
+}
+
+function renderControls() {
+  for (const k of Object.keys(CTL)) { $('c-' + k).value = st.scenario[k]; $('v-' + k).textContent = CTL[k](st.scenario[k]); }
+  $('run-sim').disabled = st.simBusy || !st.result || !st.result.feasible;
+  $('run-sim').textContent = st.simBusy ? 'Simulating…' : '▶ Run simulation';
+}
+
+function render() {
+  $('banner').innerHTML = st.error ? `<div class="alert red banner">${esc(st.error)}</div>` : '';
+  if (!st.result) return;
+  renderChips(); renderFilters(); renderMap(); renderSiteCard(); renderRack(); renderCat(); renderControls(); renderSim();
+}
+
+/* ---------- Events ---------- */
+$('map').addEventListener('click', e => { const m = e.target.closest('.marker'); if (m) { st.sel = +m.dataset.i; st.cat = 0; render(); } });
+$('map').addEventListener('keydown', e => { const m = e.target.closest('.marker'); if (m && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); st.sel = +m.dataset.i; st.cat = 0; render(); } });
+$('filters').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  st.filter = b.dataset.f;
+  if (!visible(st.sel)) { const first = st.result.sites.findIndex((_, i) => visible(i)); if (first >= 0) { st.sel = first; st.cat = 0; } }
+  render();
+});
+for (const id of ['rack-panel', 'cat-panel']) $(id).addEventListener('click', e => { const b = e.target.closest('[data-c]'); if (b) { st.cat = +b.dataset.c; renderRack(); renderCat(); } });
+for (const [id, key] of [['t-routes', 'routes'], ['t-labels', 'labels']]) $(id).onclick = e => { st[key] = !st[key]; e.currentTarget.setAttribute('aria-pressed', st[key]); renderMap(); };
+$('z-in').onclick = () => zoom(1.5);
+$('z-out').onclick = () => zoom(1 / 1.5);
+$('z-reset').onclick = () => { st.view = [0, 0, 1000, 560]; renderMap(); };
+for (const k of Object.keys(CTL)) $('c-' + k).addEventListener('input', e => { st.scenario[k] = +e.target.value; $('v-' + k).textContent = CTL[k](st.scenario[k]); recalc(); });
+$('reset').onclick = () => { st.scenario = structuredClone(st.defaults); recalc(0); };
+$('run-sim').onclick = async () => {
+  st.simBusy = true; renderControls();
+  try { const r = await api('/api/simulate', { scenario: st.scenario, n: 1000 }); st.sim = r.ok ? r.data : { error: r.data.error || 'Simulation failed.' }; }
+  catch (e) { st.sim = { error: 'Could not reach the API.' }; }
+  st.simBusy = false; renderControls(); renderSim();
+};
+document.addEventListener('keydown', e => { if (e.key === '/' && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); $('q') && $('q').focus(); } });
+
+(async () => {
+  try {
+    const r = await api('/api/defaults');
+    st.defaults = r.data; st.scenario = structuredClone(r.data);
+    recalc(0);
+  } catch (e) {
+    $('site-card').innerHTML = '<div class="alert red">Could not load the scenario from the API.</div>';
+  }
+})();
+</script>
+</body>
+</html>

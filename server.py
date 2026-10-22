@@ -2,9 +2,12 @@
 import argparse
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 from inventory_model import default_scenario, solve, simulate
 
-INDEX_HTML = '''<!doctype html>
+DASHBOARD_HTML = (Path(__file__).parent / 'web/dashboard.html').read_text()
+
+DOCS_HTML = '''<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -61,7 +64,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == '/':
-            self.reply_html(INDEX_HTML)
+            self.reply_html(DASHBOARD_HTML)
+        elif self.path == '/docs':
+            self.reply_html(DOCS_HTML)
         elif self.path == '/health':
             self.reply(200, {'status': 'ok'})
         elif self.path == '/api/defaults':
